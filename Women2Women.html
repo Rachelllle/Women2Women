@@ -1,0 +1,1645 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Women2Women — Cycle companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --cream:#F6EFEC; --sand:#EAD9D6; --surface:#FFFFFF;
+    --primary:#7D3C58; --primary-deep:#5E2841;
+    --blush:#E8C2C8; --petal:#D49AA8; --ochre:#C99064; --sage:#7E927B;
+    --ink:#2A1620; --mute:#6E4A57;
+    --c-menstrual:#7D3C58; --c-follicular:#E8C2C8; --c-ovulation:#D9A47F; --c-luteal:#A86F84;
+    --font-display:"Instrument Serif", Georgia, serif;
+    --font-sans:"Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --border: color-mix(in oklab, var(--ink) 10%, transparent);
+    --border-soft: color-mix(in oklab, var(--ink) 6%, transparent);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background: var(--cream);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .display { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.01em; }
+  em { font-style: italic; }
+  button, input, textarea { font-family: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ──────────────────────────────────────────────────────────────
+     APP SHELL — sidebar + main
+     ────────────────────────────────────────────────────────────── */
+  .app {
+    display: grid;
+    grid-template-columns: 248px 1fr;
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 90% 5%, color-mix(in oklab, var(--petal) 28%, transparent), transparent 50%),
+      radial-gradient(ellipse at 5% 95%, color-mix(in oklab, var(--blush) 30%, transparent), transparent 55%),
+      var(--cream);
+  }
+  .app.onboarding-mode { grid-template-columns: 1fr; }
+
+  /* SIDEBAR */
+  .sidebar {
+    padding: 28px 18px 24px;
+    border-right: 1px solid var(--border-soft);
+    background: color-mix(in oklab, var(--cream) 70%, white);
+    display: flex; flex-direction: column; gap: 8px;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .sb-brand { display: flex; align-items: baseline; gap: 8px; padding: 4px 10px 22px; }
+  .sb-brand-mark { font-family: var(--font-display); font-size: 32px; line-height: 1; color: var(--ink); }
+  .sb-brand-mark em { color: var(--primary); }
+  .sb-brand-sub { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--mute); padding-bottom: 4px; }
+  .sb-section { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--mute); padding: 18px 14px 6px; font-weight: 500; }
+  .sb-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px; border-radius: 12px;
+    font-size: 14px; color: var(--ink);
+    border: 1px solid transparent;
+    background: transparent;
+    width: 100%; text-align: left;
+    appearance: none; cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .sb-item:hover { background: color-mix(in oklab, var(--surface) 60%, transparent); }
+  .sb-item.on { background: var(--surface); border-color: var(--border); box-shadow: 0 1px 0 rgba(46,27,29,0.04); font-weight: 500; }
+  .sb-item svg { color: var(--mute); flex-shrink: 0; }
+  .sb-item.on svg { color: var(--primary); }
+  .sb-item .sb-badge { margin-left: auto; background: var(--primary); color: #fff; font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 500; letter-spacing: 0; }
+
+  .sb-phase-card {
+    margin-top: auto;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .sb-phase-mini { display: grid; place-items: center; }
+  .sb-phase-meta { flex: 1; min-width: 0; }
+  .sb-phase-meta .eyebrow { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute); }
+  .sb-phase-meta .display { font-size: 16px; line-height: 1.1; margin-top: 2px; }
+  .sb-phase-meta .muted-small { color: var(--mute); font-size: 11px; }
+
+  /* MAIN */
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 40px 0;
+    gap: 16px;
+  }
+  .topbar-meta { display: flex; align-items: center; gap: 12px; }
+  .phase-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 999px;
+    font-size: 13px;
+  }
+  .phase-pill-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+  .phase-pill em { color: var(--mute); font-style: normal; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface); color: var(--ink);
+    display: inline-flex; align-items: center; justify-content: center;
+    position: relative; appearance: none; cursor: pointer;
+  }
+  .icon-btn-solid {
+    width: 40px; height: 40px; border-radius: 999px; border: 0;
+    background: var(--ink); color: var(--cream);
+    display: inline-flex; align-items: center; justify-content: center; appearance: none; cursor: pointer;
+  }
+  .icon-btn-sm {
+    width: 32px; height: 32px; border-radius: 999px;
+    border: 1px solid var(--border); background: transparent; color: var(--ink);
+    display: inline-flex; align-items: center; justify-content: center; appearance: none; cursor: pointer;
+  }
+
+  /* COMMON */
+  .content { padding: 24px 40px 60px; flex: 1; min-width: 0; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute); font-weight: 500; }
+  .muted-small { font-size: 12px; color: var(--mute); }
+  .screen-title { font-size: 44px; line-height: 1.02; margin: 4px 0 0; color: var(--ink); }
+  .screen-hd { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 28px; flex-wrap: wrap; }
+  .lede { font-size: 17px; line-height: 1.5; color: var(--mute); margin: 0; max-width: 60ch; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; }
+
+  .btn-primary {
+    appearance: none; border: 0;
+    background: var(--ink); color: var(--cream);
+    padding: 14px 22px; border-radius: 999px;
+    font-size: 14px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+    cursor: pointer;
+  }
+  .btn-primary:disabled { opacity: 0.35; cursor: default; }
+  .btn-primary.btn-sm { padding: 10px 18px; font-size: 13px; }
+  .btn-primary.btn-block { width: 100%; }
+  .btn-ghost { appearance: none; border: 0; background: transparent; color: var(--mute); font-size: 13px; padding: 10px; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+  .btn-outline {
+    appearance: none; background: transparent;
+    border: 1px solid var(--border); color: var(--ink);
+    padding: 10px 18px; border-radius: 999px; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  }
+
+  /* TODAY (HOME) */
+  .home-grid {
+    display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr);
+    gap: 24px;
+  }
+  .hero-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 28px; padding: 32px;
+    display: grid; grid-template-columns: 340px 1fr; gap: 28px; align-items: center;
+  }
+  .hero-text .greet { font-family: var(--font-display); font-size: 42px; line-height: 1.05; margin: 8px 0 14px; }
+  .hero-phase-blurb { font-size: 20px; line-height: 1.35; color: var(--ink); margin: 0 0 18px; font-family: var(--font-display); }
+  .hero-quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .chip {
+    appearance: none; border: 1px solid var(--border);
+    background: transparent; padding: 8px 14px; border-radius: 999px;
+    font-size: 13px; color: var(--ink); cursor: pointer;
+  }
+  .chip.on { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+
+  .stack-row { display: flex; flex-direction: column; gap: 16px; }
+  .info-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 20px 22px;
+  }
+  .info-card.next-period {
+    background: linear-gradient(135deg, color-mix(in oklab, var(--c-menstrual) 18%, var(--surface)), var(--surface) 70%);
+  }
+  .info-val { font-family: var(--font-display); font-size: 28px; line-height: 1.05; margin: 6px 0 4px; }
+  .info-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+
+  .phase-mini-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    margin-top: 14px; border-radius: 12px; overflow: hidden;
+  }
+  .phase-mini-strip span {
+    height: 8px; border-radius: 4px; opacity: 0.45;
+  }
+  .phase-mini-strip span.on { opacity: 1; }
+
+  .recs-strip { margin-top: 28px; }
+  .recs-strip-hd { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+  .recs-strip-hd h2 { font-family: var(--font-display); font-size: 28px; margin: 0; }
+  .tip-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+  .tip {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; padding: 18px 18px 20px;
+  }
+  .tip-icon {
+    width: 36px; height: 36px; border-radius: 11px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: color-mix(in oklab, var(--cream) 60%, transparent);
+    color: var(--ink); margin-bottom: 12px;
+  }
+  .tip-food .tip-icon { background: color-mix(in oklab, var(--sage) 22%, transparent); color: color-mix(in oklab, var(--sage) 90%, var(--ink)); }
+  .tip-move .tip-icon { background: color-mix(in oklab, var(--ochre) 25%, transparent); color: color-mix(in oklab, var(--ochre) 80%, var(--ink)); }
+  .tip-mood .tip-icon, .tip-mind .tip-icon { background: color-mix(in oklab, var(--primary) 18%, transparent); color: var(--primary-deep); }
+  .tip-care .tip-icon { background: color-mix(in oklab, var(--petal) 35%, transparent); color: var(--primary-deep); }
+  .tip-tag { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute); font-weight: 500; }
+  .tip-title { font-family: var(--font-display); font-size: 22px; line-height: 1.12; margin: 4px 0 8px; }
+  .tip-body { font-size: 13.5px; line-height: 1.5; color: var(--mute); margin: 0; }
+
+  /* CALENDAR */
+  .cal-grid-2 { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); gap: 24px; }
+  .cal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 24px; }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .cal-month { font-family: var(--font-display); font-size: 28px; }
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); text-align: center; font-size: 11px; color: var(--mute); margin-bottom: 8px; letter-spacing: 0.06em; }
+  .cal-days { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; }
+  .cal-cell { aspect-ratio: 1; display: grid; place-items: center; font-size: 14px; color: var(--ink); border-radius: 12px; }
+  .cal-cell.empty { visibility: hidden; }
+  .cal-cell.is-period { background: var(--c-menstrual); color: #fff; }
+  .cal-cell.is-predicted { background: transparent; border: 1.5px dashed var(--c-menstrual); color: var(--c-menstrual); }
+  .cal-cell.is-fertile { background: color-mix(in oklab, var(--c-ovulation) 30%, transparent); }
+  .cal-cell.is-ov { background: var(--c-ovulation); color: var(--ink); font-weight: 600; }
+  .cal-cell.is-today { box-shadow: inset 0 0 0 2px var(--ink); font-weight: 600; }
+  .cal-cell.is-today.is-period { box-shadow: inset 0 0 0 2px #fff; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--mute); margin-top: 18px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .lg-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .lg-period { background: var(--c-menstrual); }
+  .lg-predicted { background: transparent; border: 1.5px dashed var(--c-menstrual); }
+  .lg-fertile { background: color-mix(in oklab, var(--c-ovulation) 50%, transparent); }
+  .lg-ov { background: var(--c-ovulation); }
+
+  .cal-side { display: flex; flex-direction: column; gap: 16px; }
+  .cycle-mini-card { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 24px; display: flex; gap: 18px; align-items: center; }
+  .cycle-mini-text .cycle-mini-val { font-family: var(--font-display); font-size: 32px; line-height: 1; }
+  .upcoming-card { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 20px 22px; }
+  .upcoming-row { display: flex; align-items: flex-start; gap: 14px; padding: 14px 0; border-top: 1px solid var(--border-soft); }
+  .upcoming-row:first-of-type { border-top: 0; }
+  .upcoming-pill { width: 50px; text-align: center; flex-shrink: 0; }
+  .upcoming-pill .day { font-family: var(--font-display); font-size: 24px; line-height: 1; }
+  .upcoming-pill .mo { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute); margin-top: 2px; }
+  .upcoming-body { flex: 1; }
+  .upcoming-body h4 { font-size: 14px; font-weight: 500; margin: 0; }
+  .upcoming-body p { font-size: 12.5px; color: var(--mute); margin: 2px 0 0; }
+  .upcoming-tag { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute); padding: 4px 10px; border-radius: 999px; background: color-mix(in oklab, var(--cream) 70%, transparent); }
+  .upcoming-tag.t-period { background: color-mix(in oklab, var(--c-menstrual) 18%, transparent); color: var(--primary-deep); }
+  .upcoming-tag.t-fertile { background: color-mix(in oklab, var(--c-ovulation) 25%, transparent); }
+
+  /* INSIGHTS */
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .filter-chip {
+    appearance: none; border: 1px solid var(--border);
+    background: transparent; color: var(--ink);
+    padding: 10px 18px; border-radius: 999px; font-size: 13px; cursor: pointer;
+  }
+  .filter-chip.on { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+  .tip-grid-4 { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .insight-banner {
+    margin-top: 28px;
+    background: var(--ink); color: var(--cream);
+    border-radius: 22px; padding: 28px 32px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  }
+  .insight-banner .eyebrow { color: color-mix(in oklab, var(--cream) 60%, transparent); }
+  .insight-banner-text { font-family: var(--font-display); font-size: 28px; margin: 4px 0 0; }
+  .insight-banner .btn-primary { background: var(--cream); color: var(--ink); }
+
+  /* CHAT */
+  .chat-wrap { max-width: 820px; margin: 0 auto; }
+  .chat-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+  .chat-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-family: var(--font-display); font-size: 24px; }
+  .chat-header h1 { font-family: var(--font-display); font-size: 32px; margin: 0; }
+  .chat-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--mute); }
+  .chat-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); }
+  .chat-thread { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; max-height: 60vh; overflow-y: auto; }
+  .bubble { display: flex; gap: 10px; align-items: flex-end; max-width: 80%; }
+  .bubble-me { align-self: flex-end; flex-direction: row-reverse; }
+  .bubble-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+  .bubble-text { padding: 14px 18px; border-radius: 18px; font-size: 14.5px; line-height: 1.5; background: var(--surface); border: 1px solid var(--border); color: var(--ink); }
+  .bubble-bot .bubble-text { border-bottom-left-radius: 6px; }
+  .bubble-me .bubble-text { background: var(--ink); color: var(--cream); border-color: var(--ink); border-bottom-right-radius: 6px; }
+  .typing { display: inline-flex; gap: 4px; padding: 16px 18px; }
+  .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--mute); animation: typing 1.2s infinite ease-in-out; }
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes typing { 0%, 60%, 100% { transform: translateY(0); opacity: 0.4; } 30% { transform: translateY(-4px); opacity: 1; } }
+  .chat-prompts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chat-prompts .chip { background: var(--surface); }
+  .chat-input {
+    display: flex; gap: 10px; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 8px 8px 8px 18px; border-radius: 999px;
+    box-shadow: 0 8px 24px -16px rgba(46,27,29,0.2);
+  }
+  .chat-input input { flex: 1; border: 0; background: transparent; padding: 10px 0; font-size: 14px; outline: none; }
+
+  /* ALERTS */
+  .alerts-wrap { max-width: 820px; }
+  .alert-row {
+    display: flex; gap: 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; padding: 18px 20px;
+    margin-bottom: 10px;
+    position: relative;
+    cursor: pointer;
+  }
+  .alert-row.unread { background: linear-gradient(to right, color-mix(in oklab, var(--blush) 30%, var(--surface)), var(--surface) 50%); }
+  .alert-icon {
+    width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+    display: grid; place-items: center;
+    background: color-mix(in oklab, var(--cream) 70%, transparent); color: var(--ink);
+  }
+  .alert-period .alert-icon { background: color-mix(in oklab, var(--c-menstrual) 18%, transparent); color: var(--primary-deep); }
+  .alert-phase .alert-icon { background: color-mix(in oklab, var(--c-luteal) 25%, transparent); color: var(--primary-deep); }
+  .alert-tip .alert-icon { background: color-mix(in oklab, var(--ochre) 25%, transparent); color: color-mix(in oklab, var(--ochre) 90%, var(--ink)); }
+  .alert-body { flex: 1; min-width: 0; }
+  .alert-meta { display: flex; gap: 10px; align-items: center; font-size: 11px; color: var(--mute); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
+  .alert-urgent { color: var(--primary); }
+  .alert-title { font-size: 15px; font-weight: 500; margin: 4px 0 4px; }
+  .alert-text { font-size: 13px; line-height: 1.5; color: var(--mute); margin: 0; }
+  .alert-x { appearance: none; border: 0; background: transparent; color: var(--mute); font-size: 20px; padding: 4px 8px; cursor: pointer; }
+  .alert-settings { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px 22px; margin-top: 24px; }
+  .alert-settings-row { display: flex; justify-content: space-between; padding: 12px 0; font-size: 14px; border-top: 1px solid var(--border-soft); }
+  .alert-settings-row:first-of-type { border-top: 0; }
+
+  /* PROFILE */
+  .prof-grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+  .prof-hero {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 22px; padding: 28px; text-align: center;
+  }
+  .prof-avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-family: var(--font-display); font-size: 40px; margin: 0 auto 14px; }
+  .prof-name { font-family: var(--font-display); font-size: 28px; margin: 0; }
+  .prof-sub { font-size: 13px; color: var(--mute); margin-top: 4px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
+  .stat { background: var(--sand); border-radius: 14px; padding: 14px 8px; text-align: center; }
+  .stat-val { font-family: var(--font-display); font-size: 26px; line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--mute); margin-top: 4px; letter-spacing: 0.06em; }
+  .prof-section { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 6px 22px; margin-bottom: 14px; }
+  .prof-section-hd { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute); margin: 16px 0 4px; font-weight: 500; }
+  .prof-row { display: flex; justify-content: space-between; padding: 14px 0; font-size: 14px; border-top: 1px solid var(--border-soft); }
+  .prof-row:first-of-type { border-top: 0; }
+  .prof-row .arrow-r { color: var(--mute); }
+  .prof-privacy { display: flex; gap: 14px; padding: 18px 22px; background: color-mix(in oklab, var(--sage) 16%, var(--cream)); border-radius: 18px; align-items: flex-start; margin-bottom: 14px; }
+  .prof-privacy svg { color: var(--sage); flex-shrink: 0; margin-top: 2px; }
+
+  /* ONBOARDING */
+  .onboarding {
+    min-height: 100vh; width: 100%;
+    display: grid; grid-template-columns: 1fr 1fr;
+  }
+  .ob-decor-panel {
+    background:
+      radial-gradient(circle at 20% 30%, color-mix(in oklab, var(--petal) 50%, transparent), transparent 50%),
+      radial-gradient(circle at 80% 70%, color-mix(in oklab, var(--blush) 60%, transparent), transparent 50%),
+      radial-gradient(circle at 60% 20%, color-mix(in oklab, var(--ochre) 35%, transparent), transparent 45%),
+      color-mix(in oklab, var(--sand) 80%, var(--cream));
+    position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ob-wheel { position: relative; }
+  .ob-wheel-ring { width: 360px; height: 360px; border-radius: 50%; background: conic-gradient(from -90deg, var(--c-menstrual), var(--c-follicular), var(--c-ovulation), var(--c-luteal), var(--c-menstrual)); position: relative; }
+  .ob-wheel-ring::after { content: ""; position: absolute; inset: 36px; background: var(--cream); border-radius: 50%; }
+  .ob-wheel-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 0; font-family: var(--font-display); font-size: 64px; line-height: 1; }
+  .ob-wheel-text em { color: var(--primary); }
+  .ob-quote { position: absolute; bottom: 48px; left: 48px; right: 48px; font-family: var(--font-display); font-size: 22px; color: var(--ink); max-width: 30ch; }
+  .ob-quote::before { content: "“"; font-size: 64px; line-height: 0.4; color: var(--primary); display: block; margin-bottom: 16px; }
+
+  .ob-form-panel { padding: 48px 56px; display: flex; flex-direction: column; }
+  .ob-form-hd { display: flex; align-items: center; justify-content: space-between; }
+  .ob-brand { display: flex; align-items: baseline; gap: 10px; }
+  .ob-brand-mark { font-family: var(--font-display); font-size: 28px; }
+  .ob-brand-mark em { color: var(--primary); }
+  .ob-brand-sub { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--mute); }
+  .ob-dots { display: flex; gap: 6px; }
+  .ob-dot { width: 24px; height: 4px; border-radius: 2px; background: color-mix(in oklab, var(--ink) 14%, transparent); }
+  .ob-dot.on { background: var(--ink); }
+
+  .ob-body { flex: 1; display: flex; flex-direction: column; justify-content: center; max-width: 460px; gap: 20px; }
+  .ob-title { font-family: var(--font-display); font-size: 56px; line-height: 1.02; margin: 0; text-wrap: pretty; }
+  .ob-sub { font-size: 16px; line-height: 1.5; color: var(--mute); margin: 0; max-width: 44ch; }
+  .ob-input {
+    appearance: none; background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 18px 20px; border-radius: 16px;
+    font-size: 17px; color: var(--ink); width: 100%; outline: none;
+  }
+  .ob-input:focus { border-color: var(--primary); }
+  .ob-stepper-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .ob-stepper { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; }
+  .ob-stepper-lbl { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute); }
+  .ob-stepper-row { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+  .ob-stepper-row .display { font-family: var(--font-display); font-size: 32px; line-height: 1; display: inline-flex; align-items: baseline; gap: 4px; }
+  .ob-stepper-row .display small { font-size: 12px; font-style: italic; color: var(--mute); font-family: var(--font-sans); font-weight: 400; }
+  .ob-stepper-row button { appearance: none; border: 1px solid var(--border); background: transparent; width: 32px; height: 32px; border-radius: 50%; font-size: 16px; line-height: 1; color: var(--ink); cursor: pointer; }
+  .ob-actions { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+  .ob-back { appearance: none; border: 0; background: transparent; color: var(--mute); padding: 12px; font-size: 13px; cursor: pointer; }
+
+  .chip-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1100px) {
+    .home-grid { grid-template-columns: 1fr; }
+    .hero-card { grid-template-columns: 280px 1fr; }
+    .cal-grid-2 { grid-template-columns: 1fr; }
+    .prof-grid { grid-template-columns: 1fr; }
+    .tip-grid-3 { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar {
+      position: sticky; top: 0; height: auto;
+      flex-direction: row; align-items: center; padding: 14px 18px;
+      overflow-x: auto; gap: 6px;
+      border-right: 0; border-bottom: 1px solid var(--border-soft);
+    }
+    .sb-brand { padding: 0 8px 0 0; }
+    .sb-brand-sub, .sb-section, .sb-phase-card { display: none; }
+    .sb-item { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+    .sb-item span:not(.sb-badge) { display: none; }
+    .topbar, .content { padding-left: 22px; padding-right: 22px; }
+    .hero-card { grid-template-columns: 1fr; text-align: left; padding: 24px; }
+    .hero-card > .dial-wrap { justify-self: center; }
+    .screen-title { font-size: 32px; }
+    .tip-grid-3 { grid-template-columns: 1fr; }
+    .onboarding { grid-template-columns: 1fr; }
+    .ob-decor-panel { min-height: 280px; }
+    .ob-wheel-ring { width: 220px; height: 220px; }
+    .ob-wheel-ring::after { inset: 22px; }
+    .ob-wheel-text { font-size: 44px; }
+    .ob-form-panel { padding: 32px 24px; }
+    .ob-title { font-size: 38px; }
+  }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+
+  <script type="text/babel" data-presets="react">
+  /* ════════════════════════════════════════════════════════════════════════════
+     WOMEN2WOMEN — Cycle companion
+     Single-file React app (no build step).
+
+     ┌──────────────────────────────────────────────────────────────────────────┐
+     │ AI / PYTHON BACKEND INTEGRATION                                          │
+     │                                                                          │
+     │ The four product pillars each have a clearly-marked hook below. To wire │
+     │ them to your Python backend, search for `AI:` in this file. The hooks   │
+     │ are:                                                                     │
+     │                                                                          │
+     │   1. api.veraReply(message, ctx)        →  POST /api/chat                │
+     │   2. api.fetchRecommendations(ctx)      →  GET  /api/recommendations     │
+     │   3. api.predictNextPeriod(ctx)         →  GET  /api/predict             │
+     │   4. api.fetchAlerts(ctx)               →  GET  /api/alerts              │
+     │                                                                          │
+     │ Each currently returns a local stub so the UI is fully working out of   │
+     │ the box. Replace the body with `fetch(...)` once your Flask/FastAPI     │
+     │ server is up. See the bottom of the file for a Flask skeleton.          │
+     └──────────────────────────────────────────────────────────────────────────┘
+     ════════════════════════════════════════════════════════════════════════════ */
+
+  const { useState, useEffect, useRef } = React;
+
+  /* ═══════════════════════ CYCLE MATH ═══════════════════════ */
+  const CYCLE_LENGTH = 28;
+  const PHASES = [
+    { id: "menstrual",  name: "Menstrual",  start: 1,  end: 5,  blurb: "Rest. Replenish. Honour the slow.",   color: "var(--c-menstrual)"  },
+    { id: "follicular", name: "Follicular", start: 6,  end: 13, blurb: "Energy rising. Build, plan, begin.",   color: "var(--c-follicular)" },
+    { id: "ovulation",  name: "Ovulation",  start: 14, end: 16, blurb: "Peak. Connect, create, shine.",        color: "var(--c-ovulation)"  },
+    { id: "luteal",     name: "Luteal",     start: 17, end: 28, blurb: "Slow turn inward. Finish & tidy.",     color: "var(--c-luteal)"     },
+  ];
+  const phaseForDay = (day) => PHASES.find(p => day >= p.start && day <= p.end) || PHASES[0];
+  const daysUntilNextPeriod = (day, cycle = CYCLE_LENGTH) => ((cycle - day) % cycle) + 1;
+  const fmtDate = (d) => d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+  const cycleDayFromDates = (lastStart, today, cycle = CYCLE_LENGTH) => {
+    const days = Math.floor((today - lastStart) / 86400000);
+    return ((days % cycle) + cycle) % cycle + 1;
+  };
+
+  /* ═══════════════════════ API LAYER — wire these to Python ═══════════════════════
+     Each function returns a Promise. The stubs below let the app work fully offline.
+     Replace each body with `return fetch(...).then(r => r.json())` to go live.
+  */
+  const API_BASE = "http://localhost:5000";
+
+  const api = {
+    // ─── AI hook #1 — chatbot reply ────────────────────────────────────────────
+    // ctx = { day, phase, profile, history }
+    async veraReply(message, ctx) {
+      // TODO (Python): replace with:
+      // return fetch(`${API_BASE}/api/chat`, {
+      //   method: "POST", headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ message, ctx })
+      // }).then(r => r.json()).then(j => j.reply);
+      await new Promise(r => setTimeout(r, 900 + Math.random() * 500));
+      const scripted = {
+        "Why am I so tired today?": `On day ${ctx.day} you're in your ${ctx.phase} phase — energy naturally dips as progesterone climbs. Try: protein at every meal, an earlier bedtime tonight, and swap one HIIT session for a walk this week. If it persists past your period, it's worth checking iron levels.`,
+        "What should I eat?": `Lean into iron and magnesium today — lentils, leafy greens, dark chocolate, pumpkin seeds. Pair iron-rich foods with citrus or peppers for better absorption. Warm, cooked foods feel kinder to your gut in the ${ctx.phase} phase than cold salads.`,
+        "Is this cramping normal?": "Mild to moderate cramps in the first 1–3 days of your period are typical — caused by prostaglandins. A heat pack, magnesium, and gentle movement usually help. If pain stops you functioning, soaks through protection in under 2 hours, or comes with fever, please see a clinician.",
+        "I feel low — what helps?": "It's real, and it's chemical — estrogen drops sharply before your period and serotonin dips with it. Three small things that genuinely help: 15 minutes outdoors, a 10-minute walk, and texting one person you trust. We can sit with it together for a while if you'd like.",
+        "Should I work out today?": `On day ${ctx.day} (${ctx.phase} phase), match the intensity to your energy. Build days (follicular, ovulation) are great for strength and HIIT. Slow days (menstrual, late luteal) lean toward walking, pilates, mobility. Honour what your body's offering today.`,
+      };
+      return scripted[message] || `Thanks for sharing that. Given you're on day ${ctx.day} (${ctx.phase} phase), it's worth being gentle with yourself. Tell me more — is it physical, emotional, or both?`;
+    },
+
+    // ─── AI hook #2 — phase-aware recommendations ──────────────────────────────
+    async fetchRecommendations(ctx) {
+      try {
+        const feeling   = ctx.feeling || "";
+        const cycleLen  = ctx.profile?.cycleLen  || 28;
+        const periodLen = ctx.profile?.periodLen || 5;
+        const data = await fetch(
+          `${API_BASE}/api/recommendations?day=${ctx.day}&phase=${ctx.phase}&feeling=${encodeURIComponent(feeling)}&cycleLen=${cycleLen}&periodLen=${periodLen}`,
+          { credentials: 'include' }
+        ).then(r => r.json());
+        return Array.isArray(data) ? data : TIPS_BY_PHASE[ctx.phase] || [];
+      } catch {
+        return TIPS_BY_PHASE[ctx.phase] || [];
+      }
+    },
+
+    // ─── AI hook #3 — next-period prediction ───────────────────────────────────
+    async predictNextPeriod(ctx) {
+      // TODO (Python): replace with an ML-based prediction call:
+      // return fetch(`${API_BASE}/api/predict`, {
+      //   method: "POST", headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ profile: ctx.profile, history: ctx.history })
+      // }).then(r => r.json());
+      const daysToNext = daysUntilNextPeriod(ctx.day, ctx.profile.cycleLen);
+      return {
+        date: addDays(new Date(), daysToNext - 1).toISOString().slice(0, 10),
+        daysToNext,
+        confidence: 0.82
+      };
+    },
+
+    // ─── AI hook #4 — personalized alerts ──────────────────────────────────────
+    async fetchAlerts(ctx) {
+      // TODO (Python): replace with:
+      // return fetch(`${API_BASE}/api/alerts`).then(r => r.json());
+      const today = new Date();
+      const nextPeriod = addDays(today, daysUntilNextPeriod(ctx.day, ctx.profile.cycleLen) - 1);
+      return [
+        { id: 1, kind: "period",   urgent: true,  when: "in 2 days",  title: "Your period is expected soon", body: `Pack the essentials. We've predicted ${fmtDate(nextPeriod)} as day 1 of your next cycle.`, unread: true },
+        { id: 2, kind: "phase",    urgent: false, when: "today",      title: "You're entering your luteal phase", body: "Energy may dip toward the end of this week. We'll adjust your recommendations.", unread: true },
+{ id: 4, kind: "tip",      urgent: false, when: "2 days ago", title: "Sleep dropped 12% this week", body: "Common before your period. Try winding down 30 minutes earlier tonight.", unread: false },
+        { id: 5, kind: "phase",    urgent: false, when: "5 days ago", title: "Cycle ran 3 days longer than your average", body: "Stress, travel, illness, and big training loads can all extend a cycle. Worth noting.", unread: false },
+      ];
+    },
+  };
+
+  /* ═══════════════════════ TIP COPY (stub recommendations) ═══════════════════════ */
+  const TIPS_BY_PHASE = {
+    menstrual: [
+      { kind: "food", icon: "leaf",    title: "Iron-rich plates",      body: "Lentils, dark greens, beets. Pair with vitamin C to absorb more.", tag: "Nourish" },
+      { kind: "move", icon: "heart",   title: "Slow movement",         body: "Gentle yin yoga or a long walk. Skip the HIIT today.", tag: "Move" },
+      { kind: "mood", icon: "moon",    title: "Permission to rest",    body: "Your body is doing real work. Lights low, hot water bottle, kind self-talk.", tag: "Mind" },
+      { kind: "care", icon: "drop",    title: "Cramp comfort",         body: "Magnesium-rich snacks (dark chocolate, pumpkin seeds) can take the edge off.", tag: "Care" },
+    ],
+    follicular: [
+      { kind: "move", icon: "sparkle", title: "Build the strength",    body: "Energy is climbing — a great week to add resistance work or try a new class.", tag: "Move" },
+      { kind: "food", icon: "leaf",    title: "Fresh and bright",      body: "Light proteins, fermented foods, citrus. Your gut is more receptive now.", tag: "Nourish" },
+      { kind: "mood", icon: "sparkle", title: "Start the thing",       body: "Better focus and risk tolerance — pitch the idea, send the message.", tag: "Mind" },
+      { kind: "care", icon: "heart",   title: "Skin loves you back",   body: "Estrogen rising means clearer skin. Light moisturizer, SPF, leave it alone.", tag: "Care" },
+    ],
+    ovulation: [
+      { kind: "mood", icon: "sparkle", title: "Speak up",              body: "Verbal fluency peaks. Schedule the talk, the date, the interview.", tag: "Mind" },
+      { kind: "food", icon: "leaf",    title: "Antioxidants",          body: "Berries, cruciferous veg, plenty of water — support egg health and hydration.", tag: "Nourish" },
+      { kind: "care", icon: "heart",   title: "Notice the signs",      body: "Egg-white cervical mucus, tender breasts, light twinges. All normal markers.", tag: "Care" },
+      { kind: "move", icon: "heart",   title: "Train hard, recover well", body: "Strength gains are highest now. Lift heavy, then prioritize sleep.", tag: "Move" },
+    ],
+    luteal: [
+      { kind: "food", icon: "leaf",    title: "Steady your blood sugar", body: "Complex carbs plus protein every few hours keeps the mood swings smaller.", tag: "Nourish" },
+      { kind: "mood", icon: "moon",    title: "Edit, don't begin",     body: "Better at finishing than starting now. Use it — close open loops.", tag: "Mind" },
+      { kind: "move", icon: "heart",   title: "Walks > sprints",       body: "Pilates, walking, mobility work. Heavy cardio can spike cortisol.", tag: "Move" },
+      { kind: "care", icon: "drop",    title: "Hydrate generously",    body: "Bloating eases with more water and less salt, not the other way round.", tag: "Care" },
+    ],
+  };
+
+  /* ═══════════════════════ ICONS ═══════════════════════ */
+  const Icon = ({ name, size = 18, stroke = 1.6 }) => {
+    const props = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: stroke, strokeLinecap: "round", strokeLinejoin: "round" };
+    switch (name) {
+      case "home":     return (<svg {...props}><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z"/></svg>);
+      case "calendar": return (<svg {...props}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>);
+      case "sparkle":  return (<svg {...props}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/><circle cx="12" cy="12" r="2.5"/></svg>);
+      case "chat":     return (<svg {...props}><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z"/></svg>);
+      case "user":     return (<svg {...props}><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>);
+      case "bell":     return (<svg {...props}><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 7H4c0-1 2-2 2-7zM10 20a2 2 0 0 0 4 0"/></svg>);
+      case "plus":     return (<svg {...props}><path d="M12 5v14M5 12h14"/></svg>);
+      case "back":     return (<svg {...props}><path d="M15 18 9 12l6-6"/></svg>);
+      case "forward":  return (<svg {...props}><path d="M9 18l6-6-6-6"/></svg>);
+      case "arrow":    return (<svg {...props}><path d="M5 12h14M13 6l6 6-6 6"/></svg>);
+      case "drop":     return (<svg {...props}><path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z"/></svg>);
+      case "moon":     return (<svg {...props}><path d="M20 14A8 8 0 1 1 10 4a7 7 0 0 0 10 10z"/></svg>);
+      case "leaf":     return (<svg {...props}><path d="M4 20c0-8 6-14 16-16-1 10-7 16-16 16zM4 20l8-8"/></svg>);
+      case "heart":    return (<svg {...props}><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></svg>);
+      case "send":     return (<svg {...props}><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>);
+      case "settings": return (<svg {...props}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.4.6 1 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>);
+      case "check":    return (<svg {...props}><path d="m5 12 5 5L20 7"/></svg>);
+      case "lock":     return (<svg {...props}><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 1 1 8 0v4"/></svg>);
+      case "info":     return (<svg {...props}><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/></svg>);
+      default: return null;
+    }
+  };
+
+  /* ═══════════════════════ CYCLE DIAL (SVG) ═══════════════════════ */
+  function CycleDial({ day = 14, size = 300, cycle = CYCLE_LENGTH }) {
+    const R_OUTER = size / 2 - 6;
+    const R_INNER = R_OUTER - 22;
+    const cx = size / 2, cy = size / 2;
+    const angleFor = (d) => (d - 1) / cycle * 360 - 90;
+    const polar = (a, r) => [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)];
+    function arcPath(startDay, endDay) {
+      const a0 = angleFor(startDay - 1);
+      const a1 = angleFor(endDay);
+      const large = (a1 - a0) > 180 ? 1 : 0;
+      const [x0, y0] = polar(a0, R_OUTER);
+      const [x1, y1] = polar(a1, R_OUTER);
+      const [x2, y2] = polar(a1, R_INNER);
+      const [x3, y3] = polar(a0, R_INNER);
+      return `M ${x0} ${y0} A ${R_OUTER} ${R_OUTER} 0 ${large} 1 ${x1} ${y1} L ${x2} ${y2} A ${R_INNER} ${R_INNER} 0 ${large} 0 ${x3} ${y3} Z`;
+    }
+    const phase = phaseForDay(day);
+    const daysToNext = daysUntilNextPeriod(day, cycle);
+    const todayA = angleFor(day - 0.5);
+    const [tx, ty] = polar(todayA, (R_OUTER + R_INNER) / 2);
+    const dots = [];
+    for (let d = 1; d <= cycle; d++) {
+      const a = angleFor(d - 0.5);
+      const [dx, dy] = polar(a, R_INNER - 12);
+      dots.push(<circle key={d} cx={dx} cy={dy} r={d === day ? 2.5 : 1} fill={d === day ? "var(--ink)" : "rgba(46,27,29,0.22)"} />);
+    }
+    return (
+      <div className="dial-wrap" style={{ width: size, height: size, position: "relative" }}>
+        <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ overflow: "visible" }}>
+          {PHASES.map(p => (
+            <path key={p.id} d={arcPath(p.start, p.end)} fill={p.color} opacity={p.id === phase.id ? 1 : 0.55} />
+          ))}
+          {PHASES.map(p => {
+            const a = angleFor(p.start - 1);
+            const [x1, y1] = polar(a, R_INNER);
+            const [x2, y2] = polar(a, R_OUTER);
+            return <line key={p.id+"sep"} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--cream)" strokeWidth="2" />;
+          })}
+          {dots}
+          <g transform={`translate(${tx} ${ty})`}>
+            <circle r="9" fill="var(--ink)" />
+            <circle r="3.5" fill="var(--cream)" />
+          </g>
+        </svg>
+        <div style={{
+          position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", pointerEvents: "none",
+          textAlign: "center", padding: "0 18%",
+        }}>
+          {size >= 200 && (
+            <div style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--mute)", fontWeight: 500 }}>
+              Day {day} · {phase.name}
+            </div>
+          )}
+          <div className="display" style={{ fontSize: size >= 200 ? size * 0.18 : size * 0.13, lineHeight: 1, marginTop: size >= 200 ? 6 : 0, color: "var(--ink)" }}>
+            {daysToNext}
+            <span style={{ fontSize: size >= 200 ? size * 0.06 : size * 0.05, marginLeft: 3, fontStyle: "italic", color: "var(--mute)" }}>days</span>
+          </div>
+          <div style={{ fontSize: size >= 200 ? 12 : 6, color: "var(--mute)", marginTop: 2 }}>until next period</div>
+        </div>
+      </div>
+    );
+  }
+
+  function MiniRing({ day = 14, size = 44, cycle = CYCLE_LENGTH }) {
+    const r = size / 2 - 3;
+    const c = size / 2;
+    const phase = phaseForDay(day);
+    const dash = 2 * Math.PI * r;
+    const filled = (day / cycle) * dash;
+    return (
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <circle cx={c} cy={c} r={r} fill="none" stroke="rgba(46,27,29,0.08)" strokeWidth="3" />
+        <circle cx={c} cy={c} r={r} fill="none" stroke={phase.color}
+          strokeWidth="3" strokeLinecap="round"
+          strokeDasharray={`${filled} ${dash - filled}`}
+          transform={`rotate(-90 ${c} ${c})`} />
+        <text x={c} y={c + 4} textAnchor="middle" fontSize={size * 0.32} fontWeight="600" fill="var(--ink)">{day}</text>
+      </svg>
+    );
+  }
+
+  /* ═══════════════════════ TIP CARD ═══════════════════════ */
+  function TipCard({ tip }) {
+    return (
+      <article className={`tip tip-${tip.kind}`}>
+        <div className="tip-icon"><Icon name={tip.icon} size={18} /></div>
+        <div className="tip-tag">{tip.tag}</div>
+        <h3 className="tip-title">{tip.title}</h3>
+        <p className="tip-body">{tip.body}</p>
+      </article>
+    );
+  }
+
+  /* ═══════════════════════ ONBOARDING ═══════════════════════ */
+  function Onboarding({ onDone }) {
+    const [mode, setMode]           = useState("welcome"); // "welcome" | "login" | "register"
+    const [step, setStep]           = useState(0);         // register steps 0-3
+    const [email, setEmail]         = useState("");
+    const [password, setPassword]   = useState("");
+    const [authError, setAuthError] = useState("");
+    const [authLoading, setAuthLoading] = useState(false);
+    const [name, setName]           = useState("");
+    const [lastPeriod, setLastPeriod] = useState("");
+    const [cycleLen, setCycleLen]   = useState(28);
+    const [periodLen, setPeriodLen] = useState(5);
+
+    // ── Login (existing account) ──────────────────────────────
+    const handleLogin = async () => {
+      if (!email.includes("@")) { setAuthError("Please enter a valid email address."); return; }
+      if (!password)             { setAuthError("Please enter your password."); return; }
+      setAuthLoading(true); setAuthError("");
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        if (res.status === 401) { setAuthError("Wrong email or password. Try again."); setAuthLoading(false); return; }
+        if (!res.ok)            { setAuthError("Something went wrong. Please try again."); setAuthLoading(false); return; }
+        // fetch saved profile
+        const me = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" }).then(r => r.json());
+        if (me.lastPeriod) {
+          onDone({ name: me.name, lastPeriod: me.lastPeriod, cycleLen: me.cycleLen, periodLen: me.periodLen });
+        } else {
+          setMode("register"); setStep(0); // profile incomplete → continue onboarding
+        }
+      } catch { setAuthError("Cannot reach the server. Make sure the backend is running."); }
+      setAuthLoading(false);
+    };
+
+    // ── Register step 0: create account ──────────────────────
+    const handleRegister = async () => {
+      if (!email.includes("@"))  { setAuthError("Please enter a valid email address."); return; }
+      if (password.length < 6)   { setAuthError("Password must be at least 6 characters."); return; }
+      setAuthLoading(true); setAuthError("");
+      try {
+        const reg = await fetch(`${API_BASE}/api/auth/register`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        if (reg.status === 409) { setAuthError("This email is already registered. Log in instead."); setAuthLoading(false); return; }
+        if (!reg.ok)            { const j = await reg.json(); setAuthError(j.error || "Registration failed."); setAuthLoading(false); return; }
+        await fetch(`${API_BASE}/api/auth/login`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+        setStep(1); // move to name step
+      } catch { setAuthError("Cannot reach the server. Make sure the backend is running."); }
+      setAuthLoading(false);
+    };
+
+    const canRegisterAdvance = () => {
+      if (step === 0) return email.includes("@") && password.length >= 6;
+      if (step === 1) return name.trim().length > 0;
+      if (step === 2) return !!lastPeriod;
+      return true;
+    };
+    const registerNext = () => {
+      if (step === 0) { handleRegister(); return; }
+      if (step < 3) setStep(step + 1);
+      else onDone({ name: name.trim() || "friend", lastPeriod, cycleLen, periodLen });
+    };
+
+    const registerSteps = ["account","name","last period","cycle"];
+    const switchMode = (m) => { setMode(m); setAuthError(""); setEmail(""); setPassword(""); };
+
+    return (
+      <div className="onboarding">
+        <div className="ob-decor-panel">
+          <div className="ob-wheel">
+            <div className="ob-wheel-ring" />
+            <div className="ob-wheel-text">w<em>2</em>w</div>
+          </div>
+          <div className="ob-quote">A quiet companion for your cycle — predictions, gentle alerts, and a kind ear when you need one.</div>
+        </div>
+
+        <div className="ob-form-panel">
+          <div className="ob-form-hd">
+            <div className="ob-brand">
+              <div className="ob-brand-mark">w<em>2</em>w</div>
+              <div className="ob-brand-sub">Women2Women</div>
+            </div>
+            {mode === "register" && (
+              <div className="ob-dots">
+                {registerSteps.map((_, i) => <span key={i} className={`ob-dot ${i <= step ? "on" : ""}`} />)}
+              </div>
+            )}
+          </div>
+
+          <div className="ob-body">
+
+            {/* ── Welcome ── */}
+            {mode === "welcome" && (<>
+              <h1 className="ob-title">Women, <em>knowing</em> women.</h1>
+              <p className="ob-sub">Track your cycle. Get personalised recommendations, predict your next period, and talk to a companion who understands your body.</p>
+              <div className="ob-actions">
+                <button className="btn-primary" onClick={() => switchMode("register")}>Create my profile <Icon name="arrow" size={16} /></button>
+                <button className="btn-ghost" onClick={() => switchMode("login")}>Log in to existing account</button>
+              </div>
+            </>)}
+
+            {/* ── Log in ── */}
+            {mode === "login" && (<>
+              <h1 className="ob-title">Welcome <em>back</em>.</h1>
+              <p className="ob-sub">Sign in to pick up where you left off.</p>
+              <input className="ob-input" type="email" placeholder="Email address" value={email}
+                onChange={e => { setEmail(e.target.value); setAuthError(""); }} autoFocus
+                onKeyDown={e => e.key === "Enter" && handleLogin()} />
+              <input className="ob-input" type="password" placeholder="Password" value={password}
+                onChange={e => { setPassword(e.target.value); setAuthError(""); }} style={{ marginTop: 10 }}
+                onKeyDown={e => e.key === "Enter" && handleLogin()} />
+              {authError && <p style={{ color: "var(--berry)", fontSize: 13, marginTop: 8 }}>{authError}</p>}
+              <div className="ob-actions">
+                <button className="ob-back" onClick={() => switchMode("welcome")}>← Back</button>
+                <button className="btn-primary" disabled={authLoading} onClick={handleLogin}>
+                  {authLoading ? "Signing in…" : <>Sign in <Icon name="arrow" size={16} /></>}
+                </button>
+              </div>
+              <p style={{ fontSize: 12, color: "#999", marginTop: 16 }}>
+                No account yet? <button className="btn-ghost" style={{ fontSize: 12, padding: "2px 6px" }} onClick={() => switchMode("register")}>Create one</button>
+              </p>
+            </>)}
+
+            {/* ── Register step 0: account ── */}
+            {mode === "register" && step === 0 && (<>
+              <h1 className="ob-title">Create your <em>account</em>.</h1>
+              <p className="ob-sub">Your data stays yours. We use this to save and restore your cycle across devices.</p>
+              <input className="ob-input" type="email" placeholder="Email address" value={email}
+                onChange={e => { setEmail(e.target.value); setAuthError(""); }} autoFocus />
+              <input className="ob-input" type="password" placeholder="Password (min 6 characters)" value={password}
+                onChange={e => { setPassword(e.target.value); setAuthError(""); }} style={{ marginTop: 10 }} />
+              {authError && <p style={{ color: "var(--berry)", fontSize: 13, marginTop: 8 }}>{authError}</p>}
+              <div className="ob-actions">
+                <button className="ob-back" onClick={() => switchMode("welcome")}>← Back</button>
+                <button className="btn-primary" disabled={!canRegisterAdvance() || authLoading} onClick={registerNext}>
+                  {authLoading ? "Creating account…" : <>Continue <Icon name="arrow" size={16} /></>}
+                </button>
+              </div>
+              <p style={{ fontSize: 12, color: "#999", marginTop: 16 }}>
+                Already have an account? <button className="btn-ghost" style={{ fontSize: 12, padding: "2px 6px" }} onClick={() => switchMode("login")}>Log in</button>
+              </p>
+            </>)}
+
+            {/* ── Register step 1: name ── */}
+            {mode === "register" && step === 1 && (<>
+              <h1 className="ob-title">What should we <em>call you</em>?</h1>
+              <p className="ob-sub">First name only.</p>
+              <input className="ob-input" placeholder="Your name" value={name}
+                onChange={e => setName(e.target.value)} autoFocus
+                onKeyDown={e => e.key === "Enter" && canRegisterAdvance() && registerNext()} />
+              <div className="ob-actions">
+                <button className="ob-back" onClick={() => setStep(0)}>← Back</button>
+                <button className="btn-primary" disabled={!canRegisterAdvance()} onClick={registerNext}>Continue <Icon name="arrow" size={16} /></button>
+              </div>
+            </>)}
+
+            {/* ── Register step 2: last period ── */}
+            {mode === "register" && step === 2 && (<>
+              <h1 className="ob-title">When did your <em>last period</em> start?</h1>
+              <p className="ob-sub">A rough date is fine — you can refine it later in the log.</p>
+              <input type="date" className="ob-input" value={lastPeriod}
+                max={new Date().toISOString().slice(0,10)} onChange={e => setLastPeriod(e.target.value)} />
+              <div className="ob-actions">
+                <button className="ob-back" onClick={() => setStep(1)}>← Back</button>
+                <button className="btn-primary" disabled={!canRegisterAdvance()} onClick={registerNext}>Continue <Icon name="arrow" size={16} /></button>
+              </div>
+            </>)}
+
+            {/* ── Register step 3: cycle length ── */}
+            {mode === "register" && step === 3 && (<>
+              <h1 className="ob-title">How long is your <em>cycle</em>?</h1>
+              <p className="ob-sub">From day 1 of one period to day 1 of the next. Average is 28 days.</p>
+              <div className="ob-stepper-grid">
+                <div className="ob-stepper">
+                  <div className="ob-stepper-lbl">Cycle</div>
+                  <div className="ob-stepper-row">
+                    <button onClick={() => setCycleLen(Math.max(20, cycleLen - 1))}>−</button>
+                    <span className="display">{cycleLen}<small>days</small></span>
+                    <button onClick={() => setCycleLen(Math.min(40, cycleLen + 1))}>+</button>
+                  </div>
+                </div>
+                <div className="ob-stepper">
+                  <div className="ob-stepper-lbl">Period</div>
+                  <div className="ob-stepper-row">
+                    <button onClick={() => setPeriodLen(Math.max(2, periodLen - 1))}>−</button>
+                    <span className="display">{periodLen}<small>days</small></span>
+                    <button onClick={() => setPeriodLen(Math.min(10, periodLen + 1))}>+</button>
+                  </div>
+                </div>
+              </div>
+              <div className="ob-actions">
+                <button className="ob-back" onClick={() => setStep(2)}>← Back</button>
+                <button className="btn-primary" onClick={registerNext}>Begin <Icon name="arrow" size={16} /></button>
+              </div>
+            </>)}
+
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════ TODAY (HOME) ═══════════════════════ */
+  function HomeScreen({ profile, day, onNav }) {
+    const phase = phaseForDay(day);
+    const today = new Date();
+    const [tips, setTips] = useState(TIPS_BY_PHASE[phase.id].slice(0, 3));
+    const daysToNext = daysUntilNextPeriod(day, profile.cycleLen);
+
+    useEffect(() => {
+      // AI: pull personalized recommendations from Python backend
+      api.fetchRecommendations({ day, phase: phase.id, profile, feeling: "" }).then(r => setTips(r.slice(0, 3)));
+    }, [day, phase.id]);
+
+    return (
+      <>
+        <div className="screen-hd">
+          <div>
+            <div className="eyebrow">{fmtDate(today)}</div>
+            <h1 className="screen-title display">Hello, <em>{profile.name}</em>.</h1>
+          </div>
+          <div className="muted-small" style={{ maxWidth: 340 }}>You're on day {day} of your cycle. Here's what your body's asking for today.</div>
+        </div>
+
+        <div className="home-grid">
+          <div>
+            <div className="hero-card">
+              <CycleDial day={day} size={300} cycle={profile.cycleLen} />
+              <div className="hero-text">
+                <div className="eyebrow">{phase.name} phase · day {day} of {profile.cycleLen}</div>
+                <p className="hero-phase-blurb">{phase.blurb}</p>
+                <div className="phase-mini-strip">
+                  {PHASES.map(p => (
+                    <span key={p.id} className={p.id === phase.id ? "on" : ""} style={{ background: p.color }} />
+                  ))}
+                </div>
+                <button className="btn-primary btn-sm" onClick={() => onNav("insights")} style={{ marginTop: 18 }}>
+                  See today's recommendations <Icon name="arrow" size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="recs-strip">
+              <div className="recs-strip-hd">
+                <h2>For your {phase.name.toLowerCase()} phase</h2>
+                <button className="btn-ghost" onClick={() => onNav("insights")}>See all →</button>
+              </div>
+              <div className="tip-grid-3">
+                {tips.map(t => <TipCard key={t.title} tip={t} />)}
+              </div>
+            </div>
+          </div>
+
+          <div className="stack-row">
+            <div className="info-card next-period">
+              <div className="eyebrow">Next period</div>
+              <div className="info-row">
+                <div>
+                  <div className="info-val">{fmtDate(addDays(today, daysToNext - 1))}</div>
+                  <div className="muted-small">in {daysToNext} {daysToNext === 1 ? "day" : "days"}</div>
+                </div>
+                <button className="btn-outline" onClick={() => onNav("calendar")}>Calendar →</button>
+              </div>
+            </div>
+
+            <div className="info-card">
+              <div className="eyebrow">Fertile window</div>
+              <div className="info-row">
+                <div>
+                  <div className="info-val">Day 12 — 17</div>
+                  <div className="muted-small">Peak around day 14 (ovulation)</div>
+                </div>
+              </div>
+            </div>
+
+<div className="info-card" style={{ background: "var(--ink)", color: "var(--cream)", borderColor: "var(--ink)" }}>
+              <div className="eyebrow" style={{ color: "color-mix(in oklab, var(--cream) 65%, transparent)" }}>Ask Vera</div>
+              <div className="info-val" style={{ marginTop: 8 }}>"Why am I so <em>tired</em> today?"</div>
+              <button className="btn-primary btn-sm" style={{ background: "var(--cream)", color: "var(--ink)", marginTop: 14 }} onClick={() => onNav("chat")}>
+                Open chat <Icon name="arrow" size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  /* ═══════════════════════ CALENDAR ═══════════════════════ */
+  function CalendarScreen({ profile, day }) {
+    const today = new Date();
+    const [viewMonth, setViewMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+
+    const first = new Date(viewMonth); first.setDate(1);
+    const startWeekday = (first.getDay() + 6) % 7;
+    const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+    const lastStart = addDays(today, -(day - 1));
+    const periodStarts = [];
+    for (let i = -2; i <= 2; i++) periodStarts.push(addDays(lastStart, i * profile.cycleLen));
+
+    const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    const dayMeta = (date) => {
+      const out = { period: false, predicted: false, fertile: false, ovulation: false, today: false };
+      if (sameDay(date, today)) out.today = true;
+      for (const s of periodStarts) {
+        for (let i = 0; i < profile.periodLen; i++) {
+          if (sameDay(addDays(s, i), date)) { out.period = true; if (s > today) out.predicted = true; }
+        }
+        if (sameDay(addDays(s, 13), date)) out.ovulation = true;
+        for (let i = 11; i <= 16; i++) if (sameDay(addDays(s, i), date)) out.fertile = true;
+      }
+      return out;
+    };
+
+    const cells = [];
+    for (let i = 0; i < startWeekday; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), d));
+
+    const upcoming = [];
+    for (const s of periodStarts) {
+      if (s > today) upcoming.push({ date: s, title: "Next period predicted", body: `Day 1 of cycle. ${profile.periodLen}-day average flow.`, kind: "period" });
+      const ov = addDays(s, 13);
+      if (ov > today) upcoming.push({ date: ov, title: "Ovulation expected", body: "Verbal fluency, peak energy, fertility highest.", kind: "fertile" });
+      const lf = addDays(s, 17);
+      if (lf > today) upcoming.push({ date: lf, title: "Luteal phase begins", body: "Energy turns inward — expect a quieter week.", kind: "phase" });
+    }
+    upcoming.sort((a,b) => a.date - b.date);
+
+    return (
+      <>
+        <div className="screen-hd">
+          <div>
+            <div className="eyebrow">Your cycle, mapped</div>
+            <h1 className="screen-title display">Calendar</h1>
+          </div>
+          <button className="btn-outline" onClick={() => setViewMonth(new Date(today.getFullYear(), today.getMonth(), 1))}>Today</button>
+        </div>
+
+        <div className="cal-grid-2">
+          <div className="cal-card">
+            <div className="cal-nav">
+              <button className="icon-btn-sm" onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1))}><Icon name="back" size={16} /></button>
+              <div className="cal-month">{viewMonth.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</div>
+              <button className="icon-btn-sm" onClick={() => setViewMonth(new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1))}><Icon name="forward" size={16} /></button>
+            </div>
+            <div className="cal-weekdays">
+              {["MON","TUE","WED","THU","FRI","SAT","SUN"].map((d,i) => <span key={i}>{d}</span>)}
+            </div>
+            <div className="cal-days">
+              {cells.map((c, i) => {
+                if (!c) return <div key={i} className="cal-cell empty" />;
+                const m = dayMeta(c);
+                const cls = ["cal-cell"];
+                if (m.period && !m.predicted) cls.push("is-period");
+                if (m.predicted) cls.push("is-predicted");
+                if (m.ovulation) cls.push("is-ov");
+                else if (m.fertile) cls.push("is-fertile");
+                if (m.today) cls.push("is-today");
+                return <div key={i} className={cls.join(" ")}><span>{c.getDate()}</span></div>;
+              })}
+            </div>
+            <div className="legend">
+              <span><span className="lg-dot lg-period" /> period</span>
+              <span><span className="lg-dot lg-predicted" /> predicted</span>
+              <span><span className="lg-dot lg-fertile" /> fertile</span>
+              <span><span className="lg-dot lg-ov" /> ovulation</span>
+            </div>
+          </div>
+
+          <div className="cal-side">
+            <div className="cycle-mini-card">
+              <CycleDial day={day} size={140} cycle={profile.cycleLen} />
+              <div className="cycle-mini-text">
+                <div className="eyebrow">You are here</div>
+                <div className="cycle-mini-val display">Day {day}</div>
+                <div className="muted-small">{phaseForDay(day).name} phase</div>
+              </div>
+            </div>
+
+            <div className="upcoming-card">
+              <div className="prof-section-hd" style={{ margin: "4px 0 8px" }}>Upcoming</div>
+              {upcoming.slice(0, 5).map((u, i) => (
+                <div key={i} className="upcoming-row">
+                  <div className="upcoming-pill">
+                    <div className="day">{u.date.getDate()}</div>
+                    <div className="mo">{u.date.toLocaleDateString("en-GB", { month: "short" })}</div>
+                  </div>
+                  <div className="upcoming-body">
+                    <span className={`upcoming-tag t-${u.kind}`}>{u.kind === "period" ? "Period" : u.kind === "fertile" ? "Fertile" : "Phase"}</span>
+                    <h4 style={{ marginTop: 6 }}>{u.title}</h4>
+                    <p>{u.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="cycle-mini-card" style={{ flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
+              <div className="prof-section-hd" style={{ margin: 0 }}>Cycle averages</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, width: "100%" }}>
+                <div className="stat"><div className="stat-val">{profile.cycleLen}</div><div className="stat-label">Cycle</div></div>
+                <div className="stat"><div className="stat-val">{profile.periodLen}</div><div className="stat-label">Period</div></div>
+                <div className="stat"><div className="stat-val">14</div><div className="stat-label">Tracked</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  /* ═══════════════════════ INSIGHTS (RECOMMENDATIONS) ═══════════════════════ */
+  const FEELINGS = ["Tired", "Energetic", "Bloated", "Calm", "Low", "Crampy", "Anxious", "Bright"];
+
+  function InsightsScreen({ profile, day, onNav }) {
+    const phase = phaseForDay(day);
+    const [tips, setTips] = useState(TIPS_BY_PHASE[phase.id]);
+    const [filter, setFilter] = useState("all");
+    const [feelings, setFeelings] = useState([]);
+
+    const toggleFeeling = (f) => setFeelings(prev =>
+      prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]
+    );
+
+    useEffect(() => {
+      const feeling = feelings.join(" ").toLowerCase();
+      api.fetchRecommendations({ day, phase: phase.id, profile, feeling }).then(setTips);
+    }, [day, phase.id, feelings]);
+
+    const visible = filter === "all" ? tips : tips.filter(t => t.kind === filter);
+
+    return (
+      <>
+        <div className="screen-hd">
+          <div>
+            <div className="eyebrow">For your {phase.name.toLowerCase()} phase · day {day}</div>
+            <h1 className="screen-title display">Today's <em>recommendations</em></h1>
+          </div>
+        </div>
+
+        <p className="lede">{phase.blurb} Recommendations are tuned to what your body needs right now — across nourishment, movement, mind, and care.</p>
+
+        <div style={{ marginTop: 24 }}>
+          <div className="eyebrow" style={{ marginBottom: 10 }}>How are you feeling today?</div>
+          <div className="filter-row" style={{ marginBottom: 24 }}>
+            {FEELINGS.map(f => (
+              <button key={f} className={`filter-chip ${feelings.includes(f) ? "on" : ""}`}
+                onClick={() => toggleFeeling(f)}>{f}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="filter-row" style={{ marginTop: 0 }}>
+          {[["all","All"],["food","Nourish"],["move","Move"],["mood","Mind"],["care","Care"]].map(([id,label]) => (
+            <button key={id} className={`filter-chip ${filter === id ? "on" : ""}`} onClick={() => setFilter(id)}>{label}</button>
+          ))}
+        </div>
+
+        <div className="tip-grid-4">
+          {visible.map(t => <TipCard key={t.title} tip={t} />)}
+        </div>
+
+        <div className="insight-banner">
+          <div>
+            <div className="eyebrow">Want to go deeper?</div>
+            <div className="insight-banner-text">Talk to Vera, your cycle companion</div>
+          </div>
+          <button className="btn-primary" onClick={() => onNav("chat")}>Open chat <Icon name="arrow" size={16} /></button>
+        </div>
+      </>
+    );
+  }
+
+  /* ═══════════════════════ CHAT (Vera) ═══════════════════════ */
+  const QUICK_PROMPTS = [
+    "Why am I so tired today?",
+    "What should I eat?",
+    "Is this cramping normal?",
+    "I feel low — what helps?",
+    "Should I work out today?",
+  ];
+
+  function ChatScreen({ profile, day }) {
+    const [messages, setMessages] = useState([
+      { who: "bot", text: "Hi — I'm Vera. I can help you make sense of what you're feeling, suggest small things to try, or just listen. What's on your mind today?" },
+    ]);
+    const [input, setInput] = useState("");
+    const [typing, setTyping] = useState(false);
+    const scrollRef = useRef(null);
+    const phase = phaseForDay(day);
+
+    useEffect(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }, [messages, typing]);
+
+    async function send(text) {
+      if (!text.trim() || typing) return;
+      const userMsg = { who: "me", text };
+      const history = [...messages, userMsg];
+      setMessages(history);
+      setInput("");
+      setTyping(true);
+
+      // AI: call Python LLM endpoint for Vera's reply
+      const reply = await api.veraReply(text, {
+        day, phase: phase.name.toLowerCase(), profile, history,
+      });
+      setMessages(m => [...m, { who: "bot", text: reply }]);
+      setTyping(false);
+    }
+
+    return (
+      <div className="chat-wrap">
+        <div className="chat-header">
+          <div className="chat-avatar">V</div>
+          <div>
+            <h1>Vera</h1>
+            <div className="chat-status"><span className="chat-dot" /> Online · cycle companion</div>
+          </div>
+        </div>
+
+        <div className="chat-thread" ref={scrollRef}>
+          {messages.map((m, i) => (
+            <div key={i} className={`bubble bubble-${m.who}`}>
+              {m.who === "bot" && <div className="bubble-avatar">V</div>}
+              <div className="bubble-text">{m.text}</div>
+            </div>
+          ))}
+          {typing && (
+            <div className="bubble bubble-bot">
+              <div className="bubble-avatar">V</div>
+              <div className="bubble-text typing"><span/><span/><span/></div>
+            </div>
+          )}
+        </div>
+
+        <div className="chat-prompts">
+          {QUICK_PROMPTS.map(q => (
+            <button key={q} className="chip" onClick={() => send(q)}>{q}</button>
+          ))}
+        </div>
+
+        <form className="chat-input" onSubmit={e => { e.preventDefault(); send(input); }}>
+          <input value={input} onChange={e => setInput(e.target.value)} placeholder="Tell Vera how you're feeling…" />
+          <button type="submit" className="icon-btn-solid" aria-label="Send"><Icon name="send" size={16} /></button>
+        </form>
+      </div>
+    );
+  }
+
+  /* ═══════════════════════ ALERTS ═══════════════════════ */
+  function AlertsScreen({ profile, day }) {
+    const [items, setItems] = useState([]);
+
+    useEffect(() => {
+      // AI: load personalized alerts from Python backend
+      api.fetchAlerts({ day, profile }).then(setItems);
+    }, [day]);
+
+    const dismiss = (id) => setItems(items.filter(i => i.id !== id));
+    const markRead = (id) => setItems(items.map(i => i.id === id ? { ...i, unread: false } : i));
+
+    const iconFor = (kind) => kind === "period" ? "drop" : kind === "phase" ? "moon" : kind === "log" ? "calendar" : kind === "tip" ? "sparkle" : "info";
+
+    return (
+      <>
+        <div className="screen-hd">
+          <div>
+            <div className="eyebrow">Quiet, considered</div>
+            <h1 className="screen-title display">Alerts</h1>
+          </div>
+          <button className="btn-outline" onClick={() => setItems(items.map(i => ({ ...i, unread: false })))}>Mark all as read</button>
+        </div>
+
+        <div className="alerts-wrap">
+          {items.map(a => (
+            <article key={a.id} className={`alert-row alert-${a.kind} ${a.unread ? "unread" : ""}`} onClick={() => markRead(a.id)}>
+              <div className="alert-icon"><Icon name={iconFor(a.kind)} size={16} /></div>
+              <div className="alert-body">
+                <div className="alert-meta">
+                  <span>{a.when}</span>
+                  {a.urgent && <span className="alert-urgent">· important</span>}
+                </div>
+                <h3 className="alert-title">{a.title}</h3>
+                <p className="alert-text">{a.body}</p>
+              </div>
+              <button className="alert-x" aria-label="Dismiss" onClick={(e) => { e.stopPropagation(); dismiss(a.id); }}>×</button>
+            </article>
+          ))}
+          {items.length === 0 && (
+            <div className="info-card" style={{ textAlign: "center", padding: 48 }}>
+              <Icon name="check" size={24} /><p style={{ marginTop: 12, color: "var(--mute)" }}>All clear. We'll let you know.</p>
+            </div>
+          )}
+
+        </div>
+      </>
+    );
+  }
+
+  /* ═══════════════════════ PROFILE ═══════════════════════ */
+  const NOTIF_DEFAULTS = {
+    periodExpected: "Two days before",
+    phaseChanges: "On",
+    dailyLogReminder: "9:00 PM",
+    wellnessNotes: "On",
+    weeklyInsights: "Sunday morning",
+  };
+
+  function ProfileScreen({ profile, day, onReset, onUpdateProfile }) {
+    const phase = phaseForDay(day);
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(null);
+    const [notif, setNotif] = useState(NOTIF_DEFAULTS);
+    const [notifBefore, setNotifBefore] = useState(NOTIF_DEFAULTS);
+    const setN = (key, val) => setNotif(n => ({ ...n, [key]: val }));
+    const setD = (key, val) => setDraft(d => ({ ...d, [key]: val }));
+
+    const startEdit = () => {
+      setDraft({ name: profile.name, cycleLen: profile.cycleLen, periodLen: profile.periodLen, lastPeriod: profile.lastPeriod || "" });
+      setNotifBefore({ ...notif });
+      setEditing(true);
+    };
+
+    const cancelEdit = () => {
+      setDraft(null);
+      setNotif({ ...notifBefore });
+      setEditing(false);
+    };
+
+    const save = () => {
+      onUpdateProfile({ ...profile, name: draft.name.trim() || profile.name, cycleLen: draft.cycleLen, periodLen: draft.periodLen, lastPeriod: draft.lastPeriod });
+      setNotifBefore({ ...notif });
+      setDraft(null);
+      setEditing(false);
+    };
+
+    const logout = async () => {
+      try { await fetch(`${API_BASE}/api/auth/logout`, { method: "POST", credentials: "include" }); } catch {}
+      onReset();
+    };
+
+    return (
+      <>
+        <div className="screen-hd">
+          <div>
+            <div className="eyebrow">Your cycle, your data</div>
+            <h1 className="screen-title display">{profile.name}</h1>
+          </div>
+          {editing ? (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button className="btn-ghost" style={{ padding: "10px 14px" }} onClick={cancelEdit}>Cancel</button>
+              <button className="btn-primary btn-sm" onClick={save}>Save changes</button>
+            </div>
+          ) : (
+            <button className="btn-outline" onClick={startEdit}>
+              <Icon name="settings" size={14} /> Edit profile
+            </button>
+          )}
+        </div>
+
+        <div className="prof-grid">
+          <div>
+            <div className="prof-hero">
+              <div className="prof-avatar">{profile.name[0]}</div>
+              <h2 className="prof-name display">{profile.name}</h2>
+              <div className="prof-sub">{phase.name} phase · Day {day} of {profile.cycleLen}</div>
+              <div className="stats-grid">
+                <div className="stat"><div className="stat-val">{profile.cycleLen}</div><div className="stat-label">Avg cycle</div></div>
+                <div className="stat"><div className="stat-val">{profile.periodLen}</div><div className="stat-label">Avg period</div></div>
+                <div className="stat"><div className="stat-val">14</div><div className="stat-label">Cycles</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="prof-section">
+              <div className="prof-section-hd">Cycle</div>
+              {editing && draft ? (<>
+                <div className="prof-row">
+                  <span>Name</span>
+                  <input className="ob-input" style={{ width: 160, padding: "6px 10px", fontSize: 14 }} value={draft.name} onChange={e => setD("name", e.target.value)} />
+                </div>
+                <div className="prof-row">
+                  <span>Cycle length</span>
+                  <div className="ob-stepper-row" style={{ gap: 8 }}>
+                    <button onClick={() => setD("cycleLen", Math.max(20, draft.cycleLen - 1))}>−</button>
+                    <span>{draft.cycleLen} days</span>
+                    <button onClick={() => setD("cycleLen", Math.min(40, draft.cycleLen + 1))}>+</button>
+                  </div>
+                </div>
+                <div className="prof-row">
+                  <span>Period length</span>
+                  <div className="ob-stepper-row" style={{ gap: 8 }}>
+                    <button onClick={() => setD("periodLen", Math.max(2, draft.periodLen - 1))}>−</button>
+                    <span>{draft.periodLen} days</span>
+                    <button onClick={() => setD("periodLen", Math.min(10, draft.periodLen + 1))}>+</button>
+                  </div>
+                </div>
+                <div className="prof-row">
+                  <span>Last period</span>
+                  <input type="date" className="ob-input" style={{ width: 160, padding: "6px 10px", fontSize: 14 }} value={draft.lastPeriod || ""} max={new Date().toISOString().slice(0,10)} onChange={e => setD("lastPeriod", e.target.value)} />
+                </div>
+              </>) : ([
+                ["Cycle length", `${profile.cycleLen} days`],
+                ["Period length", `${profile.periodLen} days`],
+                ["Last period", profile.lastPeriod ? new Date(profile.lastPeriod).toLocaleDateString("en-GB", { day:"numeric", month:"long", year:"numeric" }) : "—"],
+              ].map(([k,v]) => (
+                <div key={k} className="prof-row"><span>{k}</span><span className="muted-small">{v}</span></div>
+              )))}
+            </div>
+
+            <div className="prof-section">
+              <div className="prof-section-hd">Notification preferences</div>
+              {editing ? (<>
+                <div className="prof-row">
+                  <span>Period expected</span>
+                  <select className="form-input" style={{ width:160, padding:"4px 8px", fontSize:13 }}
+                    value={notif.periodExpected} onChange={e => setN("periodExpected", e.target.value)}>
+                    <option>Off</option>
+                    <option>Day of</option>
+                    <option>One day before</option>
+                    <option>Two days before</option>
+                    <option>Three days before</option>
+                  </select>
+                </div>
+                <div className="prof-row">
+                  <span>Phase changes</span>
+                  <select className="form-input" style={{ width:100, padding:"4px 8px", fontSize:13 }}
+                    value={notif.phaseChanges} onChange={e => setN("phaseChanges", e.target.value)}>
+                    <option>On</option><option>Off</option>
+                  </select>
+                </div>
+                <div className="prof-row">
+                  <span>Daily reminder</span>
+                  <input type="time" className="form-input" style={{ width:120, padding:"4px 8px", fontSize:13 }}
+                    value={notif.dailyLogReminder === "Off" ? "" : notif.dailyLogReminder.replace(" PM","").replace(" AM","")}
+                    onChange={e => setN("dailyLogReminder", e.target.value ? e.target.value : "Off")} />
+                </div>
+                <div className="prof-row">
+                  <span>Wellness notes</span>
+                  <select className="form-input" style={{ width:100, padding:"4px 8px", fontSize:13 }}
+                    value={notif.wellnessNotes} onChange={e => setN("wellnessNotes", e.target.value)}>
+                    <option>On</option><option>Off</option>
+                  </select>
+                </div>
+                <div className="prof-row">
+                  <span>Cycle insights (weekly)</span>
+                  <select className="form-input" style={{ width:160, padding:"4px 8px", fontSize:13 }}
+                    value={notif.weeklyInsights} onChange={e => setN("weeklyInsights", e.target.value)}>
+                    <option>Off</option>
+                    <option>Sunday morning</option>
+                    <option>Monday morning</option>
+                    <option>Friday evening</option>
+                  </select>
+                </div>
+              </>) : (<>
+                <div className="prof-row"><span>Period expected</span><span className="muted-small">{notif.periodExpected}</span></div>
+                <div className="prof-row"><span>Phase changes</span><span className="muted-small">{notif.phaseChanges}</span></div>
+                <div className="prof-row"><span>Daily reminder</span><span className="muted-small">{notif.dailyLogReminder}</span></div>
+                <div className="prof-row"><span>Wellness notes</span><span className="muted-small">{notif.wellnessNotes}</span></div>
+                <div className="prof-row"><span>Cycle insights (weekly)</span><span className="muted-small">{notif.weeklyInsights}</span></div>
+              </>)}
+            </div>
+
+            <div className="prof-privacy">
+              <Icon name="lock" size={18} />
+              <div>
+                <div className="prof-section-hd" style={{ margin: 0 }}>Your data stays yours</div>
+                <p className="muted-small" style={{ margin: "4px 0 0" }}>All cycle data is stored on your device. We never share, sell, or use it to train models.</p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+              <button className="btn-ghost" onClick={logout}>Sign out</button>
+              <button className="btn-ghost" onClick={onReset}>Reset & re-onboard</button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  /* ═══════════════════════ SIDEBAR + TOPBAR ═══════════════════════ */
+  function Sidebar({ route, setRoute, profile, day, alertCount }) {
+    const phase = phaseForDay(day);
+    const NAV = [
+      { id: "home",     label: "Today",    icon: "home" },
+      { id: "calendar", label: "Calendar", icon: "calendar" },
+      { id: "insights", label: "Insights", icon: "sparkle" },
+      { id: "chat",     label: "Chat",     icon: "chat" },
+    ];
+    const META = [
+      { id: "alerts",  label: "Alerts",  icon: "bell", badge: alertCount },
+      { id: "profile", label: "You",     icon: "user" },
+    ];
+
+    return (
+      <nav className="sidebar">
+        <div className="sb-brand">
+          <div className="sb-brand-mark">w<em>2</em>w</div>
+          <div className="sb-brand-sub">Women2Women</div>
+        </div>
+
+        <div className="sb-section">Track</div>
+        {NAV.map(n => (
+          <button key={n.id} className={`sb-item ${route === n.id ? "on" : ""}`} onClick={() => setRoute(n.id)}>
+            <Icon name={n.icon} size={18} />
+            <span>{n.label}</span>
+          </button>
+        ))}
+
+        <div className="sb-section">Account</div>
+        {META.map(n => (
+          <button key={n.id} className={`sb-item ${route === n.id ? "on" : ""}`} onClick={() => setRoute(n.id)}>
+            <Icon name={n.icon} size={18} />
+            <span>{n.label}</span>
+            {n.badge ? <span className="sb-badge">{n.badge}</span> : null}
+          </button>
+        ))}
+
+        <div className="sb-phase-card">
+          <div className="sb-phase-mini"><MiniRing day={day} size={48} cycle={profile.cycleLen} /></div>
+          <div className="sb-phase-meta">
+            <div className="eyebrow">{phase.name}</div>
+            <div className="display">Day {day}</div>
+            <div className="muted-small">of {profile.cycleLen}</div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  function Topbar({ route, day }) {
+    const phase = phaseForDay(day);
+    const titles = { home: "Today", calendar: "Calendar", insights: "Insights", chat: "Chat", alerts: "Alerts", profile: "Profile" };
+    return (
+      <header className="topbar">
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div className="eyebrow" style={{ marginRight: 4 }}>Women2Women</div>
+          <div className="muted-small">/ {titles[route]}</div>
+        </div>
+        <div className="topbar-meta">
+          <div className="phase-pill">
+            <span className="phase-pill-dot" style={{ background: phase.color }} />
+            <span>Day {day}</span>
+            <em>· {phase.name}</em>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  /* ═══════════════════════ ROOT APP ═══════════════════════ */
+  function App() {
+    const [route, setRoute]   = useState("onboarding");
+    const [profile, setProfile] = useState(null);
+
+    // On mount: check if already logged in and restore profile
+    useEffect(() => {
+      fetch(`${API_BASE}/api/auth/me`, { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && data.lastPeriod) {
+            setProfile({ name: data.name, lastPeriod: data.lastPeriod, cycleLen: data.cycleLen, periodLen: data.periodLen });
+            setRoute("home");
+          }
+        }).catch(() => {});
+    }, []);
+
+    const day = profile ? cycleDayFromDates(new Date(profile.lastPeriod), new Date(), profile.cycleLen) : 14;
+
+    const finishOnboarding = (p) => {
+      fetch(`${API_BASE}/api/profile`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(p),
+      });
+      setProfile(p);
+      setRoute("home");
+    };
+
+    const reset = () => { setProfile(null); setRoute("onboarding"); };
+    const updateProfile = (p) => {
+      fetch(`${API_BASE}/api/profile`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(p),
+      });
+      setProfile(p);
+    };
+
+    if (route === "onboarding" || !profile) {
+      return (
+        <div className="app onboarding-mode">
+          <Onboarding onDone={finishOnboarding} />
+        </div>
+      );
+    }
+
+    return (
+      <div className="app">
+        <Sidebar route={route} setRoute={setRoute} profile={profile} day={day} alertCount={2} />
+        <div className="main">
+          <Topbar route={route} day={day} />
+          <div className="content">
+            {route === "home"     && <HomeScreen     profile={profile} day={day} onNav={setRoute} />}
+            {route === "calendar" && <CalendarScreen profile={profile} day={day} />}
+            {route === "insights" && <InsightsScreen profile={profile} day={day} onNav={setRoute} />}
+            {route === "chat"     && <ChatScreen     profile={profile} day={day} />}
+            {route === "alerts"   && <AlertsScreen   profile={profile} day={day} />}
+            {route === "profile"  && <ProfileScreen  profile={profile} day={day} onReset={reset} onUpdateProfile={updateProfile} />}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
