@@ -925,11 +925,24 @@
   }
 
   /* ═══════════════════════ TODAY (HOME) ═══════════════════════ */
-  function HomeScreen({ profile, day, onNav }) {
+  function HomeScreen({ profile, day, onNav, onUpdateProfile })  {
     const phase = phaseForDay(day);
     const today = new Date();
     const [tips, setTips] = useState(TIPS_BY_PHASE[phase.id].slice(0, 3));
     const daysToNext = daysUntilNextPeriod(day, profile.cycleLen);
+    const [showLog, setShowLog] = useState(false);
+    const today_str = new Date().toISOString().slice(0, 10);
+    const [logDate, setLogDate] = useState(today_str);
+
+    const logPeriod = async () => {
+    await fetch(`${API_BASE}/api/period/log`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: logDate })
+    });
+    onUpdateProfile({ ...profile, lastPeriod: logDate });
+    setShowLog(false);
+};
 
     useEffect(() => {
       // AI: pull personalized recommendations from Python backend
@@ -976,16 +989,40 @@
           </div>
 
           <div className="stack-row">
-            <div className="info-card next-period">
-              <div className="eyebrow">Next period</div>
-              <div className="info-row">
-                <div>
-                  <div className="info-val">{fmtDate(addDays(today, daysToNext - 1))}</div>
-                  <div className="muted-small">in {daysToNext} {daysToNext === 1 ? "day" : "days"}</div>
-                </div>
-                <button className="btn-outline" onClick={() => onNav("calendar")}>Calendar →</button>
-              </div>
-            </div>
+          <div className="info-card next-period">
+  <div className="eyebrow">Next period</div>
+  <div className="info-row">
+    <div>
+      <div className="info-val">{fmtDate(addDays(today, daysToNext - 1))}</div>
+      <div className="muted-small">in {daysToNext} {daysToNext === 1 ? "day" : "days"}</div>
+    </div>
+    <button className="btn-outline" onClick={() => onNav("calendar")}>Calendar →</button>
+  </div>
+
+  {/* Bouton marquer les règles */}
+  {!showLog ? (
+    <button className="btn-outline" onClick={() => setShowLog(true)}
+      style={{ marginTop: 14, width: "100%", justifyContent: "center" }}>
+      🩸 Log my period
+    </button>
+  ) : (
+    <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 12, color: "var(--mute)" }}>Period start date: :</div>
+      <input type="date" className="ob-input"
+        style={{ padding: "8px 12px", fontSize: 14 }}
+        value={logDate}
+        max={today_str}
+        onChange={e => setLogDate(e.target.value)} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="btn-primary btn-sm" onClick={logPeriod} style={{ flex: 1 }}>
+          ✓ Confirmer
+        </button>
+        <button className="btn-ghost" onClick={() => setShowLog(false)}>Annuler</button>
+      </div>
+    </div>
+  )}
+</div>
+
 
             <div className="info-card">
               <div className="eyebrow">Fertile window</div>
@@ -1193,6 +1230,88 @@
       </>
     );
   }
+
+  
+  /* ═══════════════════════ HISTORY ═══════════════════════ */
+function HistoryScreen({ profile, day }) {
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/cycle/history`, { credentials: "include" })
+      .then(r => r.json())
+      .then(data => setHistory(Array.isArray(data) ? data : []));
+  }, []);
+
+  return (
+    <>
+      <div className="screen-hd">
+        <div>
+          <div className="eyebrow">Your cycle over time</div>
+          <h1 className="screen-title display">Cycle <em>History</em></h1>
+        </div>
+      </div>
+
+      {history.length === 0 ? (
+        <div className="card" style={{ textAlign: "center", padding: 48 }}>
+          <Icon name="calendar" size={28} />
+          <p style={{ marginTop: 12, color: "var(--mute)" }}>
+            No history yet. Log your period to start tracking.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 28 }}>
+            <div className="card" style={{ textAlign: "center" }}>
+              <div className="eyebrow">Cycles tracked</div>
+              <div className="info-val">{history.length}</div>
+            </div>
+            <div className="card" style={{ textAlign: "center" }}>
+              <div className="eyebrow">Average cycle</div>
+              <div className="info-val">
+                {Math.round(history.filter(h => h.cycleLen > 0).reduce((a, b) => a + b.cycleLen, 0) / (history.filter(h => h.cycleLen > 0).length || 1))} days
+              </div>
+            </div>
+            <div className="card" style={{ textAlign: "center" }}>
+              <div className="eyebrow">Shortest / Longest</div>
+              <div className="info-val" style={{ fontSize: 20 }}>
+                {Math.min(...history.filter(h => h.cycleLen > 0).map(h => h.cycleLen)) || "—"} / {Math.max(...history.filter(h => h.cycleLen > 0).map(h => h.cycleLen)) || "—"} days
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  <th style={{ textAlign: "left", padding: "10px 14px", color: "var(--mute)", fontWeight: 500 }}>#</th>
+                  <th style={{ textAlign: "left", padding: "10px 14px", color: "var(--mute)", fontWeight: 500 }}>Start date</th>
+                  <th style={{ textAlign: "left", padding: "10px 14px", color: "var(--mute)", fontWeight: 500 }}>Cycle length</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h, i) => (
+                  <tr key={h.id} style={{ borderBottom: "1px solid var(--border-soft)" }}>
+                    <td style={{ padding: "12px 14px", color: "var(--mute)" }}>{history.length - i}</td>
+                    <td style={{ padding: "12px 14px" }}>{new Date(h.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</td>
+                    <td style={{ padding: "12px 14px" }}>
+                      {h.cycleLen > 0 ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ width: Math.min(h.cycleLen * 3, 120), height: 6, borderRadius: 3, background: "var(--primary)", display: "inline-block" }} />
+                          {h.cycleLen} days
+                        </span>
+                      ) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 
   /* ═══════════════════════ CHAT (Vera) ═══════════════════════ */
   const QUICK_PROMPTS = [
@@ -1511,6 +1630,7 @@
       { id: "home",     label: "Today",    icon: "home" },
       { id: "calendar", label: "Calendar", icon: "calendar" },
       { id: "insights", label: "Insights", icon: "sparkle" },
+      { id: "history",  label: "History",  icon: "calendar" },
       { id: "chat",     label: "Chat",     icon: "chat" },
     ];
     const META = [
@@ -1627,9 +1747,10 @@
         <div className="main">
           <Topbar route={route} day={day} />
           <div className="content">
-            {route === "home"     && <HomeScreen     profile={profile} day={day} onNav={setRoute} />}
+            {route === "home" && <HomeScreen profile={profile} day={day} onNav={setRoute} onUpdateProfile={updateProfile} />}
             {route === "calendar" && <CalendarScreen profile={profile} day={day} />}
             {route === "insights" && <InsightsScreen profile={profile} day={day} onNav={setRoute} />}
+            {route === "history"  && <HistoryScreen  profile={profile} day={day} />}
             {route === "chat"     && <ChatScreen     profile={profile} day={day} />}
             {route === "alerts"   && <AlertsScreen   profile={profile} day={day} />}
             {route === "profile"  && <ProfileScreen  profile={profile} day={day} onReset={reset} onUpdateProfile={updateProfile} />}

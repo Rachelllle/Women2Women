@@ -107,6 +107,51 @@ def save_profile():
     )
     return jsonify({"ok": True})
 
+@app.post("/api/period/log")
+@login_required
+def log_period():
+    from datetime import date as dt
+    data = request.json or {}
+    date = data.get("date")
+    if not date:
+        return jsonify({"error": "Date required"}), 400
+
+    row = db_query("SELECT last_period FROM users WHERE id=%s",
+                   (current_user.id,), one=True)
+
+    if row and row["last_period"]:
+        last = row["last_period"]
+        new  = dt.fromisoformat(date)
+        cycle_duration = (new - last).days
+        db_query("""
+            INSERT INTO cycle_history (user_id, start_date, cycle_len)
+            VALUES (%s, %s, %s)
+        """, (current_user.id, last, cycle_duration), write=True)
+
+    db_query("UPDATE users SET last_period=%s WHERE id=%s",
+             (date, current_user.id), write=True)
+
+    return jsonify({"ok": True})
+
+
+@app.get("/api/cycle/history")
+@login_required
+def cycle_history():
+    rows = db_query("""
+        SELECT id, start_date, cycle_len
+        FROM cycle_history
+        WHERE user_id = %s
+        ORDER BY start_date DESC
+    """, (current_user.id,))
+    return jsonify([{
+        "id":        r["id"],
+        "startDate": str(r["start_date"]),
+        "cycleLen":  r["cycle_len"],
+    } for r in rows])
+
+
+
+
 
 @app.get("/")
 def index():
