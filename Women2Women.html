@@ -1232,15 +1232,51 @@
   }
 
   
-  /* ═══════════════════════ HISTORY ═══════════════════════ */
+/* ═══════════════════════ HISTORY ═══════════════════════ */
+/* ═══════════════════════ HISTORY ═══════════════════════ */
 function HistoryScreen({ profile, day }) {
   const [history, setHistory] = useState([]);
+  const [showPastLog, setShowPastLog] = useState(false);
+  const [pastStartDate, setPastStartDate] = useState("");
+  const [pastCycleLen, setPastCycleLen] = useState(28);
+  const today = new Date();
+
+  const savePastCycle = async () => {
+    await fetch(`${API_BASE}/api/cycle/history/add`, {
+      method: "POST", credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startDate: pastStartDate, cycleLen: pastCycleLen })
+    }).then(r => r.json());
+    setShowPastLog(false);
+    setPastStartDate("");
+    fetch(`${API_BASE}/api/cycle/history`, { credentials: "include" })
+      .then(r => r.json())
+      .then(data => setHistory(Array.isArray(data) ? data : []));
+  };
 
   useEffect(() => {
     fetch(`${API_BASE}/api/cycle/history`, { credentials: "include" })
       .then(r => r.json())
       .then(data => setHistory(Array.isArray(data) ? data : []));
   }, []);
+
+  const lastPeriodDate = profile.lastPeriod ? new Date(profile.lastPeriod) : null;
+
+  const DotsRow = ({ cycleLen, periodLen = profile.periodLen }) => {
+    const total = Math.min(cycleLen || 28, 40);
+    return (
+      <div style={{ display: "flex", gap: 3, flexWrap: "wrap", marginTop: 8 }}>
+        {Array.from({ length: total }).map((_, i) => {
+          let color = "var(--border)";
+          if (i < (periodLen || 5)) color = "var(--c-menstrual)";
+          else if (i >= 6 && i <= 10) color = "var(--c-follicular)";
+          else if (i >= 11 && i <= 15) color = "var(--sage)";
+          else if (i >= 16) color = "color-mix(in oklab, var(--c-luteal) 60%, transparent)";
+          return <span key={i} style={{ width: 10, height: 10, borderRadius: "50%", background: color, display: "inline-block" }} />;
+        })}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -1251,67 +1287,94 @@ function HistoryScreen({ profile, day }) {
         </div>
       </div>
 
+      <div className="card" style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--mute)", marginBottom: 12, fontWeight: 500 }}>Current cycle</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 600 }}>Day {day}</div>
+            <div style={{ fontSize: 13, color: "var(--mute)", marginTop: 2 }}>
+              Started {lastPeriodDate ? lastPeriodDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}
+            </div>
+            <DotsRow cycleLen={day} periodLen={Math.min(day, profile.periodLen)} />
+          </div>
+          <Icon name="forward" size={18} />
+        </div>
+      </div>
+
+      <div style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--mute)", margin: "20px 0 10px", fontWeight: 500 }}>
+        Previous cycles
+        <span style={{ float: "right", textTransform: "none", letterSpacing: 0, fontSize: 13, color: "var(--primary)", cursor: "pointer" }}>See all</span>
+      </div>
+
       {history.length === 0 ? (
         <div className="card" style={{ textAlign: "center", padding: 48 }}>
           <Icon name="calendar" size={28} />
-          <p style={{ marginTop: 12, color: "var(--mute)" }}>
-            No history yet. Log your period to start tracking.
-          </p>
+          <p style={{ marginTop: 12, color: "var(--mute)" }}>No previous cycles yet. Log your next period to start tracking.</p>
         </div>
       ) : (
-        <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 28 }}>
-            <div className="card" style={{ textAlign: "center" }}>
-              <div className="eyebrow">Cycles tracked</div>
-              <div className="info-val">{history.length}</div>
-            </div>
-            <div className="card" style={{ textAlign: "center" }}>
-              <div className="eyebrow">Average cycle</div>
-              <div className="info-val">
-                {Math.round(history.filter(h => h.cycleLen > 0).reduce((a, b) => a + b.cycleLen, 0) / (history.filter(h => h.cycleLen > 0).length || 1))} days
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {history.map((h) => {
+            const start = new Date(h.startDate);
+            const end = h.cycleLen ? new Date(new Date(h.startDate).setDate(start.getDate() + h.cycleLen - 1)) : null;
+            return (
+              <div key={h.id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 18, fontWeight: 600 }}>{h.cycleLen ? `${h.cycleLen} days` : "—"}</div>
+                  <div style={{ fontSize: 13, color: "var(--mute)", marginTop: 2 }}>
+                    {start.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                    {end ? ` – ${end.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                  </div>
+                  <DotsRow cycleLen={h.cycleLen} />
+                </div>
+                <Icon name="forward" size={18} />
               </div>
-            </div>
-            <div className="card" style={{ textAlign: "center" }}>
-              <div className="eyebrow">Shortest / Longest</div>
-              <div className="info-val" style={{ fontSize: 20 }}>
-                {Math.min(...history.filter(h => h.cycleLen > 0).map(h => h.cycleLen)) || "—"} / {Math.max(...history.filter(h => h.cycleLen > 0).map(h => h.cycleLen)) || "—"} days
-              </div>
-            </div>
-          </div>
+            );
+          })}
+        </div>
+      )}
 
-          <div className="card">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 14px", color: "var(--mute)", fontWeight: 500 }}>#</th>
-                  <th style={{ textAlign: "left", padding: "10px 14px", color: "var(--mute)", fontWeight: 500 }}>Start date</th>
-                  <th style={{ textAlign: "left", padding: "10px 14px", color: "var(--mute)", fontWeight: 500 }}>Cycle length</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h, i) => (
-                  <tr key={h.id} style={{ borderBottom: "1px solid var(--border-soft)" }}>
-                    <td style={{ padding: "12px 14px", color: "var(--mute)" }}>{history.length - i}</td>
-                    <td style={{ padding: "12px 14px" }}>{new Date(h.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</td>
-                    <td style={{ padding: "12px 14px" }}>
-                      {h.cycleLen > 0 ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ width: Math.min(h.cycleLen * 3, 120), height: 6, borderRadius: 3, background: "var(--primary)", display: "inline-block" }} />
-                          {h.cycleLen} days
-                        </span>
-                      ) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {!showPastLog ? (
+        <div style={{ textAlign: "center", marginTop: 24 }}>
+          <button className="btn-outline" onClick={() => setShowPastLog(true)}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Icon name="plus" size={16} /> Log a past cycle
+          </button>
+        </div>
+      ) : (
+        <div className="card" style={{ marginTop: 24 }}>
+          <div className="eyebrow" style={{ marginBottom: 14 }}>Log a past cycle</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--mute)", marginBottom: 4 }}>Period start date</div>
+              <input type="date" className="ob-input"
+                style={{ padding: "8px 12px", fontSize: 14 }}
+                value={pastStartDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={e => setPastStartDate(e.target.value)} />
+            </div>
+            <div>
+              <div style={{ fontSize: 12, color: "var(--mute)", marginBottom: 4 }}>Cycle length (days)</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button onClick={() => setPastCycleLen(Math.max(20, pastCycleLen - 1))}
+                  style={{ border: "1px solid var(--border)", background: "transparent", width: 32, height: 32, borderRadius: "50%", fontSize: 16, cursor: "pointer" }}>−</button>
+                <span style={{ fontFamily: "var(--font-display)", fontSize: 28 }}>{pastCycleLen}</span>
+                <button onClick={() => setPastCycleLen(Math.min(45, pastCycleLen + 1))}
+                  style={{ border: "1px solid var(--border)", background: "transparent", width: 32, height: 32, borderRadius: "50%", fontSize: 16, cursor: "pointer" }}>+</button>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <button className="btn-primary btn-sm" onClick={savePastCycle}
+                disabled={!pastStartDate} style={{ flex: 1 }}>
+                ✓ Save cycle
+              </button>
+              <button className="btn-ghost" onClick={() => setShowPastLog(false)}>Cancel</button>
+            </div>
           </div>
-        </>
+        </div>
       )}
     </>
   );
 }
-
 
   /* ═══════════════════════ CHAT (Vera) ═══════════════════════ */
   const QUICK_PROMPTS = [

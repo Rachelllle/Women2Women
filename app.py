@@ -9,7 +9,10 @@ from recommandation.model import get_recommendations
 
 app = Flask(__name__)
 app.secret_key = "change-me-before-deploying"
-CORS(app, supports_credentials=True)
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = False
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+CORS(app, supports_credentials=True, origins="http://localhost:5000", allow_headers=["Content-Type"], methods=["GET", "POST", "OPTIONS"])
 app.register_blueprint(admin_bp)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -68,9 +71,9 @@ def login():
     row = db_query("SELECT id, email, password_hash FROM users WHERE email = %s", (email,), one=True)
     if not row or not check_password_hash(row["password_hash"], password):
         return jsonify({"error": "Invalid email or password"}), 401
-    login_user(User(row["id"], row["email"]))
+    user = User(row["id"], row["email"])
+    login_user(user, remember=True)
     return jsonify({"ok": True, "email": row["email"]})
-
 
 @app.post("/api/auth/logout")
 @login_required
@@ -148,6 +151,20 @@ def cycle_history():
         "startDate": str(r["start_date"]),
         "cycleLen":  r["cycle_len"],
     } for r in rows])
+
+@app.post("/api/cycle/history/add")
+@login_required
+def add_past_cycle():
+    data       = request.json or {}
+    start_date = data.get("startDate")
+    cycle_len  = data.get("cycleLen", 28)
+    if not start_date:
+        return jsonify({"error": "Start date required"}), 400
+    db_query("""
+        INSERT INTO cycle_history (user_id, start_date, cycle_len)
+        VALUES (%s, %s, %s)
+    """, (current_user.id, start_date, cycle_len), write=True)
+    return jsonify({"ok": True})
 
 
 
