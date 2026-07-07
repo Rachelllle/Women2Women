@@ -6,11 +6,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import pymysql, os
 from database.db import db_query
 from recommandation.model import get_recommendations
+from alerting.routes import alerting_bp
 
 app = Flask(__name__)
 app.secret_key = "change-me-before-deploying"
 CORS(app, supports_credentials=True)
 app.register_blueprint(admin_bp)
+app.register_blueprint(alerting_bp)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
