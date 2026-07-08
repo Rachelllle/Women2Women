@@ -722,6 +722,7 @@
     const [authError, setAuthError] = useState("");
     const [authLoading, setAuthLoading] = useState(false);
     const [name, setName]           = useState("");
+    const [phoneNumber, setPhoneNumber] = useState("");
     const [lastPeriod, setLastPeriod] = useState("");
     const [cycleLen, setCycleLen]   = useState(28);
     const [periodLen, setPeriodLen] = useState(5);
@@ -782,7 +783,7 @@
     const registerNext = () => {
       if (step === 0) { handleRegister(); return; }
       if (step < 3) setStep(step + 1);
-      else onDone({ name: name.trim() || "friend", lastPeriod, cycleLen, periodLen });
+      else onDone({ name: name.trim() || "friend", lastPeriod, cycleLen, periodLen, phoneNumber });
     };
 
     const registerSteps = ["account","name","last period","cycle"];
@@ -871,6 +872,10 @@
               <p className="ob-sub">First name only.</p>
               <input className="ob-input" placeholder="Your name" value={name}
                 onChange={e => setName(e.target.value)} autoFocus
+                onKeyDown={e => e.key === "Enter" && canRegisterAdvance() && registerNext()} />
+              <p className="ob-sub" style={{ marginTop: 20 }}>WhatsApp number, for gentle cycle alerts.</p>
+              <input className="ob-input" placeholder="+33612345678" value={phoneNumber}
+                onChange={e => setPhoneNumber(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && canRegisterAdvance() && registerNext()} />
               <div className="ob-actions">
                 <button className="ob-back" onClick={() => setStep(0)}>← Back</button>
@@ -1456,16 +1461,50 @@ function HistoryScreen({ profile, day }) {
   /* ═══════════════════════ ALERTS ═══════════════════════ */
   function AlertsScreen({ profile, day }) {
     const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-      // AI: load personalized alerts from Python backend
-      api.fetchAlerts({ day, profile }).then(setItems);
-    }, [day]);
+    const TITLES = {
+      missed_log: "Reminder to log your period",
+      late_period: "Your cycle ran a little long",
+      irregularity: "Cycle variation noticed",
+      abnormal_pain: "Pain level higher than usual",
+    };
+    const LEVEL_META = {
+      info:           { dot: "🟢", label: "Info",            color: "var(--sage)" },
+      attention:      { dot: "🟡", label: "Attention",       color: "var(--ochre)" },
+      recommandation: { dot: "🔴", label: "Talk to a doctor", color: "var(--primary)" },
+    };
+    const KIND_ICON = { missed_log: "calendar", late_period: "drop", irregularity: "moon", abnormal_pain: "sparkle" };
 
-    const dismiss = (id) => setItems(items.filter(i => i.id !== id));
-    const markRead = (id) => setItems(items.map(i => i.id === id ? { ...i, unread: false } : i));
+    const load = () => {
+      setLoading(true);
+      fetch(`${API_BASE}/api/alerting/alerts`, { credentials: "include" })
+        .then(r => r.json())
+        .then(data => setItems(Array.isArray(data) ? data : []))
+        .catch(() => setItems([]))
+        .finally(() => setLoading(false));
+    };
 
-    const iconFor = (kind) => kind === "period" ? "drop" : kind === "phase" ? "moon" : kind === "log" ? "calendar" : kind === "tip" ? "sparkle" : "info";
+    useEffect(() => { load(); }, [day]);
+
+    const sendFeedback = async (id, feedback) => {
+      setItems(items.map(a => a.id === id ? { ...a, feedback } : a));
+      try {
+        await fetch(`${API_BASE}/api/alerting/alerts/${id}/feedback`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ feedback }),
+        });
+      } catch {}
+    };
+
+    const timeAgo = (isoDate) => {
+      const diffMs = Date.now() - new Date(isoDate).getTime();
+      const days = Math.floor(diffMs / 86400000);
+      if (days <= 0) return "today";
+      if (days === 1) return "yesterday";
+      return `${days} days ago`;
+    };
 
     return (
       <>
@@ -1474,30 +1513,167 @@ function HistoryScreen({ profile, day }) {
             <div className="eyebrow">Quiet, considered</div>
             <h1 className="screen-title display">Alerts</h1>
           </div>
-          <button className="btn-outline" onClick={() => setItems(items.map(i => ({ ...i, unread: false })))}>Mark all as read</button>
         </div>
 
+        <p className="lede" style={{ marginBottom: 24 }}>
+          These flag statistical patterns in what you've logged — not a diagnosis.
+          If something feels off, it's always worth a conversation with a professional.
+        </p>
+
         <div className="alerts-wrap">
-          {items.map(a => (
-            <article key={a.id} className={`alert-row alert-${a.kind} ${a.unread ? "unread" : ""}`} onClick={() => markRead(a.id)}>
-              <div className="alert-icon"><Icon name={iconFor(a.kind)} size={16} /></div>
-              <div className="alert-body">
-                <div className="alert-meta">
-                  <span>{a.when}</span>
-                  {a.urgent && <span className="alert-urgent">· important</span>}
+          {items.map(a => {
+            const meta = LEVEL_META[a.level] || LEVEL_META.info;
+            return (
+              <article key={a.id} className="alert-row">
+                <div className="alert-icon" style={{ background: `color-mix(in oklab, ${meta.color} 18%, transparent)`, color: meta.color }}>
+                  <Icon name={KIND_ICON[a.type] || "info"} size={16} />
                 </div>
-                <h3 className="alert-title">{a.title}</h3>
-                <p className="alert-text">{a.body}</p>
-              </div>
-              <button className="alert-x" aria-label="Dismiss" onClick={(e) => { e.stopPropagation(); dismiss(a.id); }}>×</button>
-            </article>
-          ))}
-          {items.length === 0 && (
+                <div className="alert-body">
+                  <div className="alert-meta">
+                    <span>{meta.dot} {meta.label}</span>
+                    <span>· {timeAgo(a.sentAt)}</span>
+                  </div>
+                  <h3 className="alert-title">{TITLES[a.type] || "Alert"}</h3>
+                  <p className="alert-text">{a.message}</p>
+                  <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                    <button
+                      className="chip"
+                      style={a.feedback === "utile" ? { background: "var(--ink)", color: "var(--cream)", borderColor: "var(--ink)" } : {}}
+                      onClick={() => sendFeedback(a.id, "utile")}>
+                      Helpful
+                    </button>
+                    <button
+                      className="chip"
+                      style={a.feedback === "pas_pertinent" ? { background: "var(--ink)", color: "var(--cream)", borderColor: "var(--ink)" } : {}}
+                      onClick={() => sendFeedback(a.id, "pas_pertinent")}>
+                      Not relevant
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+
+          {!loading && items.length === 0 && (
             <div className="info-card" style={{ textAlign: "center", padding: 48 }}>
               <Icon name="check" size={24} /><p style={{ marginTop: 12, color: "var(--mute)" }}>All clear. We'll let you know.</p>
             </div>
           )}
 
+        </div>
+      </>
+    );
+  }
+
+  /* ═══════════════════════ SYMPTOM CATALOG (Flo-style categories) ═══════════════════════ */
+  const SYMPTOM_CATALOG = {
+    Physical:          { icon: "heart",   items: ["Cramps", "Headache", "Backache", "Tender breasts", "Bloating", "Nausea"] },
+    Mood:              { icon: "sparkle", items: ["Mood swings", "Anxious", "Irritable", "Low energy", "Happy", "Sensitive"] },
+    "Skin & Hair":     { icon: "leaf",    items: ["Acne", "Oily skin", "Dry skin", "Hair changes"] },
+    "Sleep & Energy":  { icon: "moon",    items: ["Fatigue", "Insomnia", "Cravings", "Restless"] },
+    Digestion:         { icon: "drop",    items: ["Constipation", "Diarrhea", "Gas", "Appetite changes"] },
+  };
+
+  /* ═══════════════════════ LOG SYMPTOMS ═══════════════════════ */
+  function LogSymptomsScreen({ profile, day }) {
+    const phase = phaseForDay(day);
+    const [suggestions, setSuggestions] = useState([]);
+    const [selected, setSelected] = useState([]);
+    const [painScore, setPainScore] = useState(3);
+    const [saving, setSaving] = useState(false);
+    const [saved, setSaved] = useState(false);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+      setSaved(false);
+      fetch(`${API_BASE}/api/alerting/suggestions?phase=${phase.id}`, { credentials: "include" })
+        .then(r => r.json())
+        .then(data => setSuggestions(Array.isArray(data) ? data : []))
+        .catch(() => setSuggestions([]));
+    }, [phase.id]);
+
+    const toggle = (symptom) => setSelected(prev =>
+      prev.includes(symptom) ? prev.filter(s => s !== symptom) : [...prev, symptom]
+    );
+
+    const save = async () => {
+      setSaving(true); setError("");
+      try {
+        const res = await fetch(`${API_BASE}/api/alerting/symptom`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: new Date().toISOString().slice(0, 10),
+            phase: phase.id,
+            painScore,
+            symptoms: selected,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        setSaved(true);
+        setSelected([]);
+      } catch {
+        setError("Couldn't save right now. Check the backend is running.");
+      }
+      setSaving(false);
+    };
+
+    return (
+      <>
+        <div className="screen-hd">
+          <div>
+            <div className="eyebrow">{phase.name} phase · day {day}</div>
+            <h1 className="screen-title display">Log how you <em>feel</em>.</h1>
+          </div>
+        </div>
+        <p className="lede">Tap everything that applies today — as few or as many as you like.</p>
+
+        <div className="card" style={{ marginTop: 24, maxWidth: 680 }}>
+          {suggestions.length > 0 && (<>
+            <div className="eyebrow" style={{ marginBottom: 12 }}>Suggested for your phase</div>
+            <div className="chip-grid" style={{ marginBottom: 26 }}>
+              {suggestions.map(s => (
+                <button key={s.symptom} className={`chip ${selected.includes(s.symptom) ? "on" : ""}`}
+                  onClick={() => toggle(s.symptom)}>
+                  {s.symptom}
+                </button>
+              ))}
+            </div>
+          </>)}
+
+          {Object.entries(SYMPTOM_CATALOG).map(([category, { icon, items }]) => (
+            <div key={category} style={{ marginBottom: 22 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <div className="tip-icon" style={{ width: 26, height: 26, marginBottom: 0 }}>
+                  <Icon name={icon} size={14} />
+                </div>
+                <span className="eyebrow" style={{ padding: 0 }}>{category}</span>
+              </div>
+              <div className="chip-grid">
+                {items.map(symptom => (
+                  <button key={symptom} className={`chip ${selected.includes(symptom) ? "on" : ""}`}
+                    onClick={() => toggle(symptom)}>
+                    {symptom}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="eyebrow" style={{ marginTop: 10, marginBottom: 10 }}>Pain level</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <input type="range" min="0" max="10" value={painScore}
+              onChange={e => setPainScore(Number(e.target.value))} style={{ flex: 1 }} />
+            <span className="display" style={{ fontSize: 24, width: 32, textAlign: "center" }}>{painScore}</span>
+          </div>
+
+          {error && <p style={{ color: "var(--primary)", fontSize: 13, marginTop: 14 }}>{error}</p>}
+          {saved && <p style={{ color: "var(--sage)", fontSize: 13, marginTop: 14 }}>Saved — thank you.</p>}
+
+          <button className="btn-primary btn-block" style={{ marginTop: 20 }}
+            disabled={saving} onClick={save}>
+            {saving ? "Saving…" : <>Save entry <Icon name="check" size={16} /></>}
+          </button>
         </div>
       </>
     );
@@ -1694,6 +1870,7 @@ function HistoryScreen({ profile, day }) {
       { id: "calendar", label: "Calendar", icon: "calendar" },
       { id: "insights", label: "Insights", icon: "sparkle" },
       { id: "history",  label: "History",  icon: "calendar" },
+      { id: "log",      label: "Log",      icon: "plus" },
       { id: "chat",     label: "Chat",     icon: "chat" },
     ];
     const META = [
@@ -1782,6 +1959,13 @@ function HistoryScreen({ profile, day }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(p),
       });
+      if (p.phoneNumber) {
+        fetch(`${API_BASE}/api/alerting/profile`, {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber: p.phoneNumber, whatsappConsent: true }),
+        });
+      }
       setProfile(p);
       setRoute("home");
     };
@@ -1814,6 +1998,7 @@ function HistoryScreen({ profile, day }) {
             {route === "calendar" && <CalendarScreen profile={profile} day={day} />}
             {route === "insights" && <InsightsScreen profile={profile} day={day} onNav={setRoute} />}
             {route === "history"  && <HistoryScreen  profile={profile} day={day} />}
+            {route === "log"      && <LogSymptomsScreen profile={profile} day={day} />}
             {route === "chat"     && <ChatScreen     profile={profile} day={day} />}
             {route === "alerts"   && <AlertsScreen   profile={profile} day={day} />}
             {route === "profile"  && <ProfileScreen  profile={profile} day={day} onReset={reset} onUpdateProfile={updateProfile} />}
