@@ -1,0 +1,14 @@
+Generate a CSV dataset of women's health and wellness tips tailored to the menstrual cycle. The CSV must have exactly these columns:
+
+phase, kind, tag, cycle_day_min, cycle_day_max, icon, title, body
+
+Rules:
+
+phase: one of menstrual, follicular, ovulation, luteal
+kind: one of food, move, mood, care
+tag: a short keyword label (e.g. iron, yoga, rest, hydration)
+cycle_day_min and cycle_day_max: the day range within a 28-day cycle where this tip applies (integers)
+icon: a single relevant emoji
+title: short tip title (5–8 words max)
+body: 1–2 sentence explanation, practical and actionable
+Generate at least 1200 rows. Cover all 4 phases evenly (300 rows each). Cover all 4 kinds evenly (300 rows each). Vary the tags heavily — aim for at least 50 distinct tags. Avoid repeating the same title or body. Keep the tone warm, empowering, and science-informed.
