@@ -10,7 +10,10 @@ from alerting.routes import alerting_bp
 
 app = Flask(__name__)
 app.secret_key = "change-me-before-deploying"
-CORS(app, supports_credentials=True)
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = False
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+CORS(app, supports_credentials=True, origins="http://localhost:5000", allow_headers=["Content-Type"], methods=["GET", "POST", "OPTIONS"])
 app.register_blueprint(admin_bp)
 app.register_blueprint(alerting_bp)
 
@@ -70,9 +73,9 @@ def login():
     row = db_query("SELECT id, email, password_hash FROM users WHERE email = %s", (email,), one=True)
     if not row or not check_password_hash(row["password_hash"], password):
         return jsonify({"error": "Invalid email or password"}), 401
-    login_user(User(row["id"], row["email"]))
+    user = User(row["id"], row["email"])
+    login_user(user, remember=True)
     return jsonify({"ok": True, "email": row["email"]})
-
 
 @app.post("/api/auth/logout")
 @login_required
@@ -108,6 +111,65 @@ def save_profile():
         write=True,
     )
     return jsonify({"ok": True})
+
+@app.post("/api/period/log")
+@login_required
+def log_period():
+    from datetime import date as dt
+    data = request.json or {}
+    date = data.get("date")
+    if not date:
+        return jsonify({"error": "Date required"}), 400
+
+    row = db_query("SELECT last_period FROM users WHERE id=%s",
+                   (current_user.id,), one=True)
+
+    if row and row["last_period"]:
+        last = row["last_period"]
+        new  = dt.fromisoformat(date)
+        cycle_duration = (new - last).days
+        db_query("""
+            INSERT INTO cycle_history (user_id, start_date, cycle_len)
+            VALUES (%s, %s, %s)
+        """, (current_user.id, last, cycle_duration), write=True)
+
+    db_query("UPDATE users SET last_period=%s WHERE id=%s",
+             (date, current_user.id), write=True)
+
+    return jsonify({"ok": True})
+
+
+@app.get("/api/cycle/history")
+@login_required
+def cycle_history():
+    rows = db_query("""
+        SELECT id, start_date, cycle_len
+        FROM cycle_history
+        WHERE user_id = %s
+        ORDER BY start_date DESC
+    """, (current_user.id,))
+    return jsonify([{
+        "id":        r["id"],
+        "startDate": str(r["start_date"]),
+        "cycleLen":  r["cycle_len"],
+    } for r in rows])
+
+@app.post("/api/cycle/history/add")
+@login_required
+def add_past_cycle():
+    data       = request.json or {}
+    start_date = data.get("startDate")
+    cycle_len  = data.get("cycleLen", 28)
+    if not start_date:
+        return jsonify({"error": "Start date required"}), 400
+    db_query("""
+        INSERT INTO cycle_history (user_id, start_date, cycle_len)
+        VALUES (%s, %s, %s)
+    """, (current_user.id, start_date, cycle_len), write=True)
+    return jsonify({"ok": True})
+
+
+
 
 
 @app.get("/")
