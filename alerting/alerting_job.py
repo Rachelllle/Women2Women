@@ -67,36 +67,64 @@ def get_consenting_users() -> list[dict]:
         SELECT u.id AS user_id, ap.phone_number
         FROM users u
         JOIN alerting_profile ap ON ap.user_id = u.id
-        WHERE ap.whatsapp_consent = TRUE AND ap.phone_number IS NOT NULL
+        WHERE ap.whatsapp_consent = 1 AND ap.phone_number IS NOT NULL
         """
     )
     return rows or []
 
 
-def was_recently_sent(user_id: int, alert_type: str) -> bool:
+def _cutoff(alert_type: str) -> str:
     cooldown = COOLDOWN_DAYS.get(alert_type, 3)
-    cutoff = datetime.now() - timedelta(days=cooldown)
-    row = db_query(
+    return (datetime.now() - timedelta(days=cooldown)).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def log_alert(user_id: int, alert: dict, whatsapp_sent: int = 0):
+    """Record an alert for display in the app. whatsapp_sent stays 0 unless it
+    was actually pushed to WhatsApp by the job."""
+    db_query(
         """
-        SELECT id FROM alerts_log
-        WHERE user_id = %s AND type = %s AND sent_at >= %s
-        ORDER BY sent_at DESC LIMIT 1
+        INSERT INTO alerts_log (user_id, type, level, score, message_sent, whatsapp_sent)
+        VALUES (%s, %s, %s, %s, %s, %s)
         """,
-        (user_id, alert_type, cutoff),
-        one=True,
+        (user_id, alert["type"], alert["level"], alert.get("ml_score"), alert["message"], whatsapp_sent),
+        write=True,
+    )
+
+
+def was_recently_logged(user_id: int, alert_type: str) -> bool:
+    """Any alert of this type recently recorded (used by the app to avoid
+    piling up duplicate display rows each time the Alerts page opens)."""
+    row = db_query(
+        "SELECT id FROM alerts_log WHERE user_id = %s AND type = %s AND sent_at >= %s "
+        "ORDER BY sent_at DESC LIMIT 1",
+        (user_id, alert_type, _cutoff(alert_type)), one=True,
     )
     return row is not None
 
 
-def log_alert(user_id: int, alert: dict):
-    db_query(
-        """
-        INSERT INTO alerts_log (user_id, type, level, score, message_sent)
-        VALUES (%s, %s, %s, %s, %s)
-        """,
-        (user_id, alert["type"], alert["level"], alert.get("ml_score"), alert["message"]),
-        write=True,
+def was_recently_whatsapped(user_id: int, alert_type: str) -> bool:
+    """Only real WhatsApp sends block the job — an alert merely shown in the app
+    (whatsapp_sent = 0) does not prevent it from being pushed to WhatsApp."""
+    row = db_query(
+        "SELECT id FROM alerts_log WHERE user_id = %s AND type = %s AND whatsapp_sent = 1 "
+        "AND sent_at >= %s ORDER BY sent_at DESC LIMIT 1",
+        (user_id, alert_type, _cutoff(alert_type)), one=True,
     )
+    return row is not None
+
+
+def mark_whatsapp_sent(user_id: int, alert: dict):
+    """Flag an existing recent display row as sent on WhatsApp, or insert one —
+    so the app never shows a duplicate for the same alert."""
+    row = db_query(
+        "SELECT id FROM alerts_log WHERE user_id = %s AND type = %s AND sent_at >= %s "
+        "ORDER BY sent_at DESC LIMIT 1",
+        (user_id, alert["type"], _cutoff(alert["type"])), one=True,
+    )
+    if row:
+        db_query("UPDATE alerts_log SET whatsapp_sent = 1 WHERE id = %s", (row["id"],), write=True)
+    else:
+        log_alert(user_id, alert, whatsapp_sent=1)
 
 
 def run():
@@ -109,12 +137,12 @@ def run():
         alerts = generate_alerts_for_user(user_id, db_query)
 
         for alert in alerts:
-            if was_recently_sent(user_id, alert["type"]):
-                continue  # déjà envoyée récemment, on n'insiste pas
+            if was_recently_whatsapped(user_id, alert["type"]):
+                continue  # déjà ENVOYÉE sur WhatsApp récemment, on n'insiste pas
 
             sent_ok = send_whatsapp(user["phone_number"], alert["message"])
             if sent_ok:
-                log_alert(user_id, alert)
+                mark_whatsapp_sent(user_id, alert)
                 total_sent += 1
 
     print(f"Job terminé : {total_sent} alerte(s) envoyée(s).")

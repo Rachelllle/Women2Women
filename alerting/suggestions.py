@@ -13,7 +13,7 @@ def get_symptom_suggestions(phase: str, age: int, db_query, top_n: int = 4) -> l
         SELECT symptom_tag, occurrence_count, total_logs_in_bucket
         FROM symptom_catalog_stats
         WHERE phase = %s AND age_bracket = %s
-        ORDER BY (occurrence_count / total_logs_in_bucket) DESC
+        ORDER BY (occurrence_count * 1.0 / total_logs_in_bucket) DESC
         LIMIT %s
         """,
         (phase, bracket, top_n),

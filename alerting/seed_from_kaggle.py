@@ -62,9 +62,9 @@ def insert_into_db(stats: pd.DataFrame, db_query):
             INSERT INTO symptom_catalog_stats
                 (phase, age_bracket, symptom_tag, occurrence_count, total_logs_in_bucket)
             VALUES (%s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                occurrence_count = occurrence_count + VALUES(occurrence_count),
-                total_logs_in_bucket = total_logs_in_bucket + VALUES(total_logs_in_bucket)
+            ON CONFLICT(phase, age_bracket, symptom_tag) DO UPDATE SET
+                occurrence_count = occurrence_count + excluded.occurrence_count,
+                total_logs_in_bucket = total_logs_in_bucket + excluded.total_logs_in_bucket
             """,
             (row["phase"], row["age_bracket"], row["symptom_tag"],
              int(row["occurrence_count"]), int(row["total_logs_in_bucket"])),

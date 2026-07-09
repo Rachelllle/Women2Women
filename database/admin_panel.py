@@ -10,18 +10,32 @@ PER_PAGE = 25
 
 def get_tables():
     rows = query(
-        "SELECT table_name, table_rows FROM information_schema.tables "
-        "WHERE table_schema = %s ORDER BY table_name", ("women2women",)
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name NOT LIKE 'sqlite_%' ORDER BY name"
     )
     result = []
     for r in rows:
-        name = r["table_name"] if isinstance(r, dict) else r[0]
-        cnt  = query(f"SELECT COUNT(*) as c FROM `{name}`", one=True)["c"]
+        name = r["name"]
+        cnt  = query(f'SELECT COUNT(*) as c FROM `{name}`', one=True)["c"]
         result.append((name, cnt))
     return result
 
 def get_columns(table):
-    return query(f"SHOW COLUMNS FROM `{table}`")
+    # Map SQLite's PRAGMA table_info to the phpMyAdmin-style shape the rest of
+    # this module expects (Field / Type / Null / Key / Default / Extra).
+    rows = query(f'PRAGMA table_info(`{table}`)')
+    cols = []
+    for r in rows:
+        is_pk = bool(r["pk"])
+        cols.append({
+            "Field":   r["name"],
+            "Type":    r["type"] or "",
+            "Null":    "NO" if r["notnull"] else "YES",
+            "Key":     "PRI" if is_pk else "",
+            "Default": r["dflt_value"],
+            "Extra":   "auto_increment" if is_pk and "INT" in (r["type"] or "").upper() else "",
+        })
+    return cols
 
 def valid_table(table):
     names = [t for t, _ in get_tables()]
@@ -109,7 +123,7 @@ def shell(content, table="", tab="browse", flash="", flash_type="ok"):
     )
     flash_html = f'<div class="msg-{flash_type}">{flash}</div>' if flash else ""
     bc = (f'<span>women2women</span> &rsaquo; <b>{table}</b>' if table
-          else '<b>women2women</b> (MySQL)')
+          else '<b>women2women</b> (SQLite)')
     tabs_html = ""
     if table:
         def tl(label, t_tab):
@@ -146,7 +160,7 @@ def login_page():
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Admin Login</title>{CSS}</head><body>
     <div class="login-wrap"><div class="login-box">
     <h2>&#128274; phpMyAdmin</h2>
-    <p style="font-size:12px;color:#666;margin-bottom:14px">women2women · MariaDB</p>{err}
+    <p style="font-size:12px;color:#666;margin-bottom:14px">women2women · SQLite</p>{err}
     <form method="post" action="/admin/login">
     <div style="margin-bottom:10px"><label style="font-size:12px;color:#555">Password</label><br>
     <input class="form-input" name="pwd" type="password" autofocus style="margin-top:4px"></div>
@@ -217,7 +231,7 @@ def _browse(table):
 
     where, params = "", []
     if search:
-        clauses = [f"CAST(`{c}` AS CHAR) LIKE %s" for c in cols]
+        clauses = [f"CAST(`{c}` AS TEXT) LIKE %s" for c in cols]
         where   = "WHERE " + " OR ".join(clauses)
         params  = [f"%{search}%"] * len(cols)
 
@@ -400,9 +414,9 @@ def sql_post():
     result, flash, ft = "", "", "ok"
     try:
         conn = get_db()
-        with conn.cursor() as cur:
-            cur.execute(q)
-            rows = cur.fetchall()
+        cur  = conn.cursor()
+        cur.execute(q)
+        rows = cur.fetchall()
         conn.commit(); conn.close()
         if rows:
             cols   = list(rows[0].keys())
@@ -417,7 +431,7 @@ def sql_post():
     return _sql_page(q, result, flash, ft)
 
 def _sql_page(q="", result="", flash="", ft="ok"):
-    content = f"""<h3 style="margin-bottom:10px;font-size:13px">&#9654; SQL Console — women2women (MariaDB)</h3>
+    content = f"""<h3 style="margin-bottom:10px;font-size:13px">&#9654; SQL Console — women2women (SQLite)</h3>
     <form method="post" action="/admin/sql">
     <textarea class="sql-box" name="q">{q}</textarea>
     <div style="margin-top:8px">

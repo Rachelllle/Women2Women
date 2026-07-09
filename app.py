@@ -1,225 +1,53 @@
-from flask import Flask, request, jsonify, send_from_directory
-from database.admin_panel import admin_bp
+"""Women2Women — application entry point.
+
+Thin assembly layer: create the Flask app, wire login + CORS, register every
+feature blueprint, init the database, and serve the single-page front-end.
+All real logic lives in the feature packages (auth, profile, recommandation,
+prediction, chatbot, alerts, database).
+"""
+import os
+from flask import Flask, send_from_directory
 from flask_cors import CORS
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
-import pymysql, os
-from database.db import db_query
-from recommandation.model import get_recommendations
+
+from database.schema import init_db
+from database.admin_panel import admin_bp
+from auth import login_manager
+from auth.routes import auth_bp
+from profiles.routes import profile_bp
+from recommandation.routes import rec_bp
+from prediction.routes import prediction_bp
+from history.routes import history_bp
+from chat.routes import chat_bp
+from alerts.routes import alerts_bp
 from alerting.routes import alerting_bp
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
 app.secret_key = "change-me-before-deploying"
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = False
 app.config["SESSION_COOKIE_HTTPONLY"] = True
-CORS(app, supports_credentials=True, origins="http://localhost:5000", allow_headers=["Content-Type"], methods=["GET", "POST", "OPTIONS"])
+CORS(app, supports_credentials=True)
+
+login_manager.init_app(app)
+
+# Feature blueprints
 app.register_blueprint(admin_bp)
+app.register_blueprint(auth_bp)
+app.register_blueprint(profile_bp)
+app.register_blueprint(rec_bp)
+app.register_blueprint(prediction_bp)
+app.register_blueprint(history_bp)
+app.register_blueprint(chat_bp)
+app.register_blueprint(alerts_bp)
 app.register_blueprint(alerting_bp)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-def init_db():
-    db_query("""
-        CREATE TABLE IF NOT EXISTS users (
-            id            INT AUTO_INCREMENT PRIMARY KEY,
-            email         VARCHAR(255) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL,
-            created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    """, write=True)
-
 init_db()
-
-login_manager = LoginManager(app)
-
-class User(UserMixin):
-    def __init__(self, id, email):
-        self.id    = id
-        self.email = email
-
-@login_manager.user_loader
-def load_user(user_id):
-    row = db_query("SELECT id, email FROM users WHERE id = %s", (user_id,), one=True)
-    return User(row["id"], row["email"]) if row else None
-
-@login_manager.unauthorized_handler
-def unauthorized():
-    return jsonify({"error": "Login required"}), 401
-
-
-@app.post("/api/auth/register")
-def register():
-    data     = request.json or {}
-    email    = data.get("email", "").strip().lower()
-    password = data.get("password", "")
-    if not email or not password:
-        return jsonify({"error": "Email and password are required"}), 400
-    if len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters"}), 400
-    try:
-        db_query("INSERT INTO users (email, password_hash) VALUES (%s, %s)",
-                 (email, generate_password_hash(password)), write=True)
-        return jsonify({"ok": True}), 201
-    except pymysql.err.IntegrityError:
-        return jsonify({"error": "Email already registered"}), 409
-
-
-@app.post("/api/auth/login")
-def login():
-    data     = request.json or {}
-    email    = data.get("email", "").strip().lower()
-    password = data.get("password", "")
-    row = db_query("SELECT id, email, password_hash FROM users WHERE email = %s", (email,), one=True)
-    if not row or not check_password_hash(row["password_hash"], password):
-        return jsonify({"error": "Invalid email or password"}), 401
-    user = User(row["id"], row["email"])
-    login_user(user, remember=True)
-    return jsonify({"ok": True, "email": row["email"]})
-
-@app.post("/api/auth/logout")
-@login_required
-def logout():
-    logout_user()
-    return jsonify({"ok": True})
-
-
-@app.get("/api/auth/me")
-def me():
-    if current_user.is_authenticated:
-        row = db_query("SELECT name, last_period, cycle_len, period_len FROM users WHERE id = %s",
-                       (current_user.id,), one=True)
-        return jsonify({
-            "id":        current_user.id,
-            "email":     current_user.email,
-            "name":      row["name"],
-            "lastPeriod": str(row["last_period"]) if row["last_period"] else None,
-            "cycleLen":  row["cycle_len"],
-            "periodLen": row["period_len"],
-        })
-    return jsonify({"error": "Not logged in"}), 401
-
-
-@app.post("/api/profile")
-@login_required
-def save_profile():
-    data = request.json or {}
-    db_query(
-        "UPDATE users SET name=%s, last_period=%s, cycle_len=%s, period_len=%s WHERE id=%s",
-        (data.get("name"), data.get("lastPeriod"), data.get("cycleLen", 28),
-         data.get("periodLen", 5), current_user.id),
-        write=True,
-    )
-    return jsonify({"ok": True})
-
-@app.post("/api/period/log")
-@login_required
-def log_period():
-    from datetime import date as dt
-    data = request.json or {}
-    date = data.get("date")
-    if not date:
-        return jsonify({"error": "Date required"}), 400
-
-    row = db_query("SELECT last_period FROM users WHERE id=%s",
-                   (current_user.id,), one=True)
-
-    if row and row["last_period"]:
-        last = row["last_period"]
-        new  = dt.fromisoformat(date)
-        cycle_duration = (new - last).days
-        db_query("""
-            INSERT INTO cycle_history (user_id, start_date, cycle_len)
-            VALUES (%s, %s, %s)
-        """, (current_user.id, last, cycle_duration), write=True)
-
-    db_query("UPDATE users SET last_period=%s WHERE id=%s",
-             (date, current_user.id), write=True)
-
-    return jsonify({"ok": True})
-
-
-@app.get("/api/cycle/history")
-@login_required
-def cycle_history():
-    rows = db_query("""
-        SELECT id, start_date, cycle_len
-        FROM cycle_history
-        WHERE user_id = %s
-        ORDER BY start_date DESC
-    """, (current_user.id,))
-    return jsonify([{
-        "id":        r["id"],
-        "startDate": str(r["start_date"]),
-        "cycleLen":  r["cycle_len"],
-    } for r in rows])
-
-@app.post("/api/cycle/history/add")
-@login_required
-def add_past_cycle():
-    data       = request.json or {}
-    start_date = data.get("startDate")
-    cycle_len  = data.get("cycleLen", 28)
-    if not start_date:
-        return jsonify({"error": "Start date required"}), 400
-    db_query("""
-        INSERT INTO cycle_history (user_id, start_date, cycle_len)
-        VALUES (%s, %s, %s)
-    """, (current_user.id, start_date, cycle_len), write=True)
-    return jsonify({"ok": True})
-
-
-
 
 
 @app.get("/")
 def index():
     return send_from_directory(BASE_DIR, "Women2Women.html")
-
-
-@app.post("/api/chat")
-@login_required
-def chat():
-    data    = request.json or {}
-    message = data.get("message", "")
-    ctx     = data.get("ctx", {})
-    reply   = f"(stub) You said '{message}' on day {ctx.get('day')} ({ctx.get('phase')} phase)."
-    return jsonify({"reply": reply})
-
-
-def day_to_phase(day, cycle_len=28):
-    if day <= 5:                  return "menstrual"
-    if day <= cycle_len // 2:     return "follicular"
-    if day <= cycle_len // 2 + 3: return "ovulation"
-    return "luteal"
-
-@app.get("/api/recommendations")
-def recommendations():
-    day        = int(request.args.get("day", 14))
-    phase      = request.args.get("phase") or day_to_phase(day)
-    feeling    = request.args.get("feeling", "")
-    cycle_len  = int(request.args.get("cycleLen", 28))
-    period_len = int(request.args.get("periodLen", 5))
-    return jsonify(get_recommendations(day, phase, feeling, cycle_len, period_len))
-
-
-@app.post("/api/predict")
-@login_required
-def predict():
-    return jsonify({"date": "2026-06-01", "daysToNext": 17, "confidence": 0.82})
-
-
-@app.get("/api/alerts")
-@login_required
-def alerts():
-    return jsonify([
-        {"id": 1, "kind": "period", "urgent": True,  "when": "in 2 days",
-         "title": "Your period is expected soon",
-         "body": "Pack the essentials. Day 1 predicted Mon, 1 Jun.", "unread": True},
-        {"id": 2, "kind": "phase",  "urgent": False, "when": "today",
-         "title": "You're entering your luteal phase",
-         "body": "Energy may dip toward the end of this week.", "unread": True},
-    ])
 
 
 if __name__ == "__main__":

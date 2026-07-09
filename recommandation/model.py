@@ -19,6 +19,15 @@ _embeddings = _model.encode([t['_text'] for t in _tips], convert_to_tensor=True)
 
 CATEGORIES = ['food', 'move', 'mood', 'care']
 
+
+def day_to_phase(day: int, cycle_len: int = 28) -> str:
+    """Map a day-of-cycle to its menstrual phase."""
+    if day <= 5:                  return "menstrual"
+    if day <= cycle_len // 2:     return "follicular"
+    if day <= cycle_len // 2 + 3: return "ovulation"
+    return "luteal"
+
+
 def get_recommendations(day: int, phase: str, feeling: str = '',
                         cycle_len: int = 28, period_len: int = 5) -> list[dict]:
     days_to_next = cycle_len - day
@@ -53,7 +62,6 @@ def get_recommendations(day: int, phase: str, feeling: str = '',
         result.append({
             'kind':  best_tip['kind'],
             'tag':   best_tip['tag'],
-            'icon':  best_tip['icon'],
             'title': best_tip['title'],
             'body':  best_tip['body'],
         })

@@ -1,6 +1,7 @@
 """
 Routes Flask du module alerting, isolées dans leur propre blueprint.
 """
+from datetime import date
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 
@@ -22,15 +23,22 @@ def log_cycle():
     if not start_date:
         return jsonify({"error": "startDate requis"}), 400
 
-    # Complète le cycle_len du cycle précédent maintenant qu'on connaît sa fin
-    db_query(
-        """
-        UPDATE cycles SET cycle_len = DATEDIFF(%s, start_date)
-        WHERE user_id = %s AND cycle_len IS NULL
-        ORDER BY start_date DESC LIMIT 1
-        """,
-        (start_date, current_user.id), write=True,
+    # Complète le cycle_len du cycle précédent maintenant qu'on connaît sa fin.
+    # SQLite ne supporte ni DATEDIFF ni UPDATE ... ORDER BY LIMIT : on cible le
+    # cycle ouvert le plus récent par son id et on calcule la durée en Python.
+    prev = db_query(
+        "SELECT id, start_date FROM cycles WHERE user_id = %s AND cycle_len IS NULL "
+        "ORDER BY start_date DESC LIMIT 1",
+        (current_user.id,), one=True,
     )
+    if prev:
+        try:
+            clen = (date.fromisoformat(start_date) - date.fromisoformat(str(prev["start_date"]))).days
+            if clen > 0:
+                db_query("UPDATE cycles SET cycle_len = %s WHERE id = %s",
+                         (clen, prev["id"]), write=True)
+        except (ValueError, TypeError):
+            pass
 
     db_query(
         "INSERT INTO cycles (user_id, start_date, period_len, source) VALUES (%s, %s, %s, 'real_user')",
@@ -77,6 +85,29 @@ def suggestions():
     return jsonify(result)
 
 
+@alerting_bp.post("/refresh")
+@login_required
+def refresh_alerts():
+    """Génère les alertes à la demande pour l'utilisatrice connectée et les
+    écrit dans alerts_log (même logique que le job WhatsApp, sans l'envoi).
+    Permet d'afficher des alertes dans l'app sans dépendre du cron."""
+    from alerting.db_bridge import generate_alerts_for_user
+    from alerting.alerting_job import was_recently_logged, log_alert
+
+    row = db_query("SELECT cycle_len FROM users WHERE id = %s", (current_user.id,), one=True)
+    declared = (row and row["cycle_len"]) or 28
+
+    generated = generate_alerts_for_user(current_user.id, db_query, declared)
+    created = 0
+    for alert in generated:
+        # display-only dedup: don't mark as WhatsApp-sent, so the job can still push it
+        if was_recently_logged(current_user.id, alert["type"]):
+            continue
+        log_alert(current_user.id, alert)   # whatsapp_sent defaults to 0
+        created += 1
+    return jsonify({"ok": True, "created": created})
+
+
 @alerting_bp.get("/alerts")
 @login_required
 def alerts():
@@ -85,7 +116,7 @@ def alerts():
     correspond exactement à ce qu'elle a reçu sur WhatsApp."""
     rows = db_query(
         """
-        SELECT id, type, level, message_sent, sent_at, user_feedback
+        SELECT id, type, level, message_sent, sent_at, user_feedback, is_read
         FROM alerts_log
         WHERE user_id = %s
         ORDER BY sent_at DESC
@@ -101,10 +132,41 @@ def alerts():
             "message": r["message_sent"],
             "sentAt": str(r["sent_at"]),
             "feedback": r["user_feedback"],
+            "isRead": bool(r["is_read"]),
         }
         for r in (rows or [])
     ]
     return jsonify(result)
+
+
+@alerting_bp.post("/alerts/<int:alert_id>/read")
+@login_required
+def mark_alert_read(alert_id):
+    db_query("UPDATE alerts_log SET is_read = 1 WHERE id = %s AND user_id = %s",
+             (alert_id, current_user.id), write=True)
+    return jsonify({"ok": True})
+
+
+@alerting_bp.post("/alerts/read-all")
+@login_required
+def mark_all_read():
+    db_query("UPDATE alerts_log SET is_read = 1 WHERE user_id = %s", (current_user.id,), write=True)
+    return jsonify({"ok": True})
+
+
+@alerting_bp.post("/alerts/<int:alert_id>/delete")
+@login_required
+def delete_alert(alert_id):
+    db_query("DELETE FROM alerts_log WHERE id = %s AND user_id = %s",
+             (alert_id, current_user.id), write=True)
+    return jsonify({"ok": True})
+
+
+@alerting_bp.post("/alerts/delete-all")
+@login_required
+def delete_all_alerts():
+    db_query("DELETE FROM alerts_log WHERE user_id = %s", (current_user.id,), write=True)
+    return jsonify({"ok": True})
 
 
 @alerting_bp.post("/alerts/<int:alert_id>/feedback")
@@ -153,11 +215,11 @@ def save_alerting_profile():
         """
         INSERT INTO alerting_profile (user_id, birth_date, phone_number, whatsapp_consent)
         VALUES (%s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-            birth_date = VALUES(birth_date),
-            phone_number = VALUES(phone_number),
-            whatsapp_consent = VALUES(whatsapp_consent)
+        ON CONFLICT(user_id) DO UPDATE SET
+            birth_date = excluded.birth_date,
+            phone_number = excluded.phone_number,
+            whatsapp_consent = excluded.whatsapp_consent
         """,
-        (current_user.id, birth_date, phone_number, consent), write=True,
+        (current_user.id, birth_date, phone_number, int(consent)), write=True,
     )
     return jsonify({"ok": True})
