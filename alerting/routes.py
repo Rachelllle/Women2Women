@@ -116,7 +116,7 @@ def alerts():
     correspond exactement à ce qu'elle a reçu sur WhatsApp."""
     rows = db_query(
         """
-        SELECT id, type, level, message_sent, sent_at, user_feedback
+        SELECT id, type, level, message_sent, sent_at, user_feedback, is_read
         FROM alerts_log
         WHERE user_id = %s
         ORDER BY sent_at DESC
@@ -132,10 +132,41 @@ def alerts():
             "message": r["message_sent"],
             "sentAt": str(r["sent_at"]),
             "feedback": r["user_feedback"],
+            "isRead": bool(r["is_read"]),
         }
         for r in (rows or [])
     ]
     return jsonify(result)
+
+
+@alerting_bp.post("/alerts/<int:alert_id>/read")
+@login_required
+def mark_alert_read(alert_id):
+    db_query("UPDATE alerts_log SET is_read = 1 WHERE id = %s AND user_id = %s",
+             (alert_id, current_user.id), write=True)
+    return jsonify({"ok": True})
+
+
+@alerting_bp.post("/alerts/read-all")
+@login_required
+def mark_all_read():
+    db_query("UPDATE alerts_log SET is_read = 1 WHERE user_id = %s", (current_user.id,), write=True)
+    return jsonify({"ok": True})
+
+
+@alerting_bp.post("/alerts/<int:alert_id>/delete")
+@login_required
+def delete_alert(alert_id):
+    db_query("DELETE FROM alerts_log WHERE id = %s AND user_id = %s",
+             (alert_id, current_user.id), write=True)
+    return jsonify({"ok": True})
+
+
+@alerting_bp.post("/alerts/delete-all")
+@login_required
+def delete_all_alerts():
+    db_query("DELETE FROM alerts_log WHERE user_id = %s", (current_user.id,), write=True)
+    return jsonify({"ok": True})
 
 
 @alerting_bp.post("/alerts/<int:alert_id>/feedback")

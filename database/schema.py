@@ -127,17 +127,19 @@ def _init_alerting_tables():
             message_sent  TEXT,
             sent_at       TEXT DEFAULT CURRENT_TIMESTAMP,
             whatsapp_sent INTEGER DEFAULT 0,
+            is_read       INTEGER DEFAULT 0,
             user_feedback TEXT DEFAULT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """, write=True)
-    # migration: add whatsapp_sent to an existing alerts_log table
+    # migrations: add columns to an existing alerts_log table
     cols = {r["name"] for r in db_query("PRAGMA table_info(alerts_log)")}
-    if "whatsapp_sent" not in cols:
-        try:
-            db_query("ALTER TABLE alerts_log ADD COLUMN whatsapp_sent INTEGER DEFAULT 0", write=True)
-        except Exception:
-            pass
+    for col, defn in [("whatsapp_sent", "INTEGER DEFAULT 0"), ("is_read", "INTEGER DEFAULT 0")]:
+        if col not in cols:
+            try:
+                db_query(f"ALTER TABLE alerts_log ADD COLUMN {col} {defn}", write=True)
+            except Exception:
+                pass
 
     db_query("""
         CREATE TABLE IF NOT EXISTS model_registry (

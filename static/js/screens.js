@@ -264,9 +264,7 @@ function InsightsScreen({ profile, day, onNav }) {
         </div>
       </div>
 
-      <p className="lede">{phase.blurb}</p>
-
-      <div style={{ marginTop: 36 }}>
+      <div style={{ marginTop: 28 }}>
         <div className="eyebrow" style={{ marginBottom: 12 }}>How are you feeling today?</div>
         <div className="filter-row" style={{ marginBottom: 0 }}>
           {FEELINGS.map(f => (
@@ -561,20 +559,24 @@ const ALERT_LEVEL_META = {
 };
 const ALERT_KIND_ICON = { missed_log: "calendar", late_period: "drop", irregularity: "moon", abnormal_pain: "sparkle" };
 
-function AlertsScreen({ profile, day }) {
+function AlertsScreen({ profile, day, onAlertsChange }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const applyItems = (arr) => {
+    setItems(arr);
+    if (onAlertsChange) onAlertsChange(arr.filter(a => !a.isRead).length);
+  };
+
   const load = () => {
     setLoading(true);
-    // generate fresh alerts on demand (same logic as the WhatsApp job), then read them
     fetch(`${API_BASE}/api/alerting/refresh`, { method: "POST", credentials: "include" })
       .catch(() => {})
       .finally(() => {
         fetch(`${API_BASE}/api/alerting/alerts`, { credentials: "include" })
           .then(r => r.json())
-          .then(data => setItems(Array.isArray(data) ? data : []))
-          .catch(() => setItems([]))
+          .then(data => applyItems(Array.isArray(data) ? data : []))
+          .catch(() => applyItems([]))
           .finally(() => setLoading(false));
       });
   };
@@ -592,12 +594,31 @@ function AlertsScreen({ profile, day }) {
     } catch {}
   };
 
+  const markRead = (id) => {
+    applyItems(items.map(a => a.id === id ? { ...a, isRead: true } : a));
+    fetch(`${API_BASE}/api/alerting/alerts/${id}/read`, { method: "POST", credentials: "include" }).catch(() => {});
+  };
+  const markAllRead = () => {
+    applyItems(items.map(a => ({ ...a, isRead: true })));
+    fetch(`${API_BASE}/api/alerting/alerts/read-all`, { method: "POST", credentials: "include" }).catch(() => {});
+  };
+  const removeOne = (id) => {
+    applyItems(items.filter(a => a.id !== id));
+    fetch(`${API_BASE}/api/alerting/alerts/${id}/delete`, { method: "POST", credentials: "include" }).catch(() => {});
+  };
+  const clearAll = () => {
+    applyItems([]);
+    fetch(`${API_BASE}/api/alerting/alerts/delete-all`, { method: "POST", credentials: "include" }).catch(() => {});
+  };
+
   const timeAgo = (isoDate) => {
     const days = Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000);
     if (days <= 0) return "today";
     if (days === 1) return "yesterday";
     return `${days} days ago`;
   };
+
+  const unread = items.filter(a => !a.isRead).length;
 
   return (
     <>
@@ -606,18 +627,28 @@ function AlertsScreen({ profile, day }) {
           <div className="eyebrow">Quiet, considered</div>
           <h1 className="screen-title display">Alerts</h1>
         </div>
+        {items.length > 0 && (
+          <div style={{ display: "flex", gap: 8 }}>
+            {unread > 0 && <button className="btn-ghost" onClick={markAllRead}>Mark all read</button>}
+            <button className="btn-ghost" onClick={clearAll}>Clear all</button>
+          </div>
+        )}
       </div>
 
-      <p className="lede" style={{ marginBottom: 24 }}>
-        These flag statistical patterns in what you've logged — not a diagnosis.
-        If something feels off, it's always worth a conversation with a professional.
-      </p>
+      <div className="info-card" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "14px 18px", margin: "8px 0 24px" }}>
+        <Icon name="chat" size={18} />
+        <p className="muted-small" style={{ margin: 0, lineHeight: 1.5 }}>
+          To get these on <strong>WhatsApp</strong>: from your phone, send{" "}
+          <strong>join&nbsp;stomach-tall</strong> to <strong>+1&nbsp;415&nbsp;523&nbsp;8886</strong> once
+          to activate.
+        </p>
+      </div>
 
       <div className="alerts-wrap">
         {items.map(a => {
           const meta = ALERT_LEVEL_META[a.level] || ALERT_LEVEL_META.info;
           return (
-            <article key={a.id} className="alert-row">
+            <article key={a.id} className={`alert-row ${a.isRead ? "" : "unread"}`}>
               <div className="alert-icon" style={{ background: `color-mix(in oklab, ${meta.color} 18%, transparent)`, color: meta.color }}>
                 <Icon name={ALERT_KIND_ICON[a.type] || "info"} size={16} />
               </div>
@@ -625,18 +656,21 @@ function AlertsScreen({ profile, day }) {
                 <div className="alert-meta">
                   <span>{meta.dot} {meta.label}</span>
                   <span>· {timeAgo(a.sentAt)}</span>
+                  {!a.isRead && <span style={{ color: "var(--primary)" }}>· new</span>}
                 </div>
                 <h3 className="alert-title">{ALERT_TITLES[a.type] || "Alert"}</h3>
                 <p className="alert-text">{a.message}</p>
-                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <button className="chip"
                     style={a.feedback === "utile" ? { background: "var(--ink)", color: "var(--cream)", borderColor: "var(--ink)" } : {}}
                     onClick={() => sendFeedback(a.id, "utile")}>Helpful</button>
                   <button className="chip"
                     style={a.feedback === "pas_pertinent" ? { background: "var(--ink)", color: "var(--cream)", borderColor: "var(--ink)" } : {}}
                     onClick={() => sendFeedback(a.id, "pas_pertinent")}>Not relevant</button>
+                  {!a.isRead && <button className="btn-ghost" style={{ fontSize: 12, padding: "4px 8px" }} onClick={() => markRead(a.id)}>Mark read</button>}
                 </div>
               </div>
+              <button className="alert-x" aria-label="Delete" onClick={() => removeOne(a.id)}>×</button>
             </article>
           );
         })}
@@ -708,7 +742,6 @@ function LogSymptomsScreen({ profile, day }) {
           <h1 className="screen-title display">Log how you <em>feel</em>.</h1>
         </div>
       </div>
-      <p className="lede">Tap everything that applies today — as few or as many as you like.</p>
 
       <div className="card" style={{ marginTop: 24 }}>
         {suggestions.length > 0 && (<>
@@ -937,7 +970,6 @@ function ProfileScreen({ profile, day, onReset, onUpdateProfile }) {
 
           <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
             <button className="btn-ghost" onClick={logout}>Sign out</button>
-            <button className="btn-ghost" onClick={onReset}>Reset & re-onboard</button>
           </div>
         </div>
       </div>

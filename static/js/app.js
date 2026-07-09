@@ -7,6 +7,15 @@
 function App() {
   const [route, setRoute]     = useState("onboarding");
   const [profile, setProfile] = useState(null);
+  const [alertCount, setAlertCount] = useState(0);
+
+  // real unread-alert count for the sidebar badge
+  const refreshAlertCount = () => {
+    fetch(`${API_BASE}/api/alerting/alerts`, { credentials: "include" })
+      .then(r => r.json())
+      .then(d => setAlertCount(Array.isArray(d) ? d.filter(a => !a.isRead).length : 0))
+      .catch(() => {});
+  };
 
   // On mount: only restore the session when the profile is COMPLETE.
   // An account that never finished onboarding (no name / no last period)
@@ -18,6 +27,7 @@ function App() {
         if (data && data.id && data.name && data.lastPeriod) {
           setProfile({ name: data.name, lastPeriod: data.lastPeriod, cycleLen: data.cycleLen, periodLen: data.periodLen, avatar: data.avatar, notifPrefs: data.notifPrefs });
           setRoute("home");
+          refreshAlertCount();
         }
       }).catch(() => {});
   }, []);
@@ -57,7 +67,7 @@ function App() {
 
   return (
     <div className="app">
-      <Sidebar route={route} setRoute={setRoute} profile={profile} day={day} alertCount={2} />
+      <Sidebar route={route} setRoute={setRoute} profile={profile} day={day} alertCount={alertCount} />
       <div className="main">
         <Topbar route={route} day={day} cycleLen={profile.cycleLen} />
         <div className="content">
@@ -67,7 +77,7 @@ function App() {
           {route === "symptoms" && <LogSymptomsScreen profile={profile} day={day} />}
           {route === "history"  && <HistoryScreen  profile={profile} day={day} onNav={setRoute} />}
           {route === "chat"     && <ChatScreen     profile={profile} day={day} />}
-          {route === "alerts"   && <AlertsScreen   profile={profile} day={day} />}
+          {route === "alerts"   && <AlertsScreen   profile={profile} day={day} onAlertsChange={setAlertCount} />}
           {route === "profile"  && <ProfileScreen  profile={profile} day={day} onReset={reset} onUpdateProfile={updateProfile} />}
         </div>
       </div>
