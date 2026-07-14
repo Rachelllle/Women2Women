@@ -91,18 +91,6 @@ const api = {
       confidence: 0.82
     };
   },
-
-  // personalized alerts (stub)
-  async fetchAlerts(ctx) {
-    const today = new Date();
-    const nextPeriod = addDays(today, daysUntilNextPeriod(ctx.day, ctx.profile.cycleLen) - 1);
-    return [
-      { id: 1, kind: "period", urgent: true,  when: "in 2 days",  title: "Your period is expected soon", body: `Pack the essentials. We've predicted ${fmtDate(nextPeriod)} as day 1 of your next cycle.`, unread: true },
-      { id: 2, kind: "phase",  urgent: false, when: "today",      title: "You're entering your luteal phase", body: "Energy may dip toward the end of this week. We'll adjust your recommendations.", unread: true },
-      { id: 4, kind: "tip",    urgent: false, when: "2 days ago", title: "Sleep dropped 12% this week", body: "Common before your period. Try winding down 30 minutes earlier tonight.", unread: false },
-      { id: 5, kind: "phase",  urgent: false, when: "5 days ago", title: "Cycle ran 3 days longer than your average", body: "Stress, travel, illness, and big training loads can all extend a cycle. Worth noting.", unread: false },
-    ];
-  },
 };
 
 /* ═══════════════════════ TIP COPY (offline fallback) ═══════════════════════ */

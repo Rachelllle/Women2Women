@@ -42,7 +42,8 @@ function HomeScreen({ profile, day }) {
           <p className="hero-phase-blurb">{phase.blurb}</p>
           <div className="phase-mini-strip">
             {PHASES.map(p => (
-              <span key={p.id} className={p.id === phase.id ? "on" : ""} style={{ background: p.color }} />
+              <span key={p.id}
+                style={{ background: p.id === phase.id ? "var(--c-menstrual)" : p.color, opacity: p.id === phase.id ? 1 : 0.4 }} />
             ))}
           </div>
 
@@ -478,11 +479,9 @@ const QUICK_PROMPTS = [
   "I feel low — what helps?",
   "Should I work out today?",
 ];
+const CHAT_GREETING = { who: "bot", text: "Hi — I'm Lea. I can help you make sense of what you're feeling, suggest small things to try, or just listen. What's on your mind today?" };
 
-function ChatScreen({ profile, day }) {
-  const [messages, setMessages] = useState([
-    { who: "bot", text: "Hi — I'm Lea. I can help you make sense of what you're feeling, suggest small things to try, or just listen. What's on your mind today?" },
-  ]);
+function ChatScreen({ profile, day, messages, setMessages }) {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef(null);
@@ -506,14 +505,26 @@ function ChatScreen({ profile, day }) {
     setTyping(false);
   }
 
+  const newConversation = () => {
+    setMessages([CHAT_GREETING]);
+    setInput("");
+  };
+
   return (
     <div className="chat-wrap">
-      <div className="chat-header">
-        <div className="chat-avatar">L</div>
-        <div>
-          <h1>Lea</h1>
-          <div className="chat-status"><span className="chat-dot" /> Online · cycle companion</div>
+      <div className="chat-header" style={{ justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div className="chat-avatar">L</div>
+          <div>
+            <h1>Lea</h1>
+            <div className="chat-status"><span className="chat-dot" /> Online · cycle companion</div>
+          </div>
         </div>
+        {messages.length > 1 && (
+          <button className="btn-outline" onClick={newConversation}>
+            <Icon name="plus" size={14} /> New conversation
+          </button>
+        )}
       </div>
 
       <div className="chat-thread" ref={scrollRef}>

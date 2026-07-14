@@ -63,7 +63,9 @@ function CycleDial({ day = 14, size = 300, cycle = CYCLE_LENGTH }) {
     <div className="dial-wrap" style={{ width: size, height: size, position: "relative" }}>
       <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} style={{ overflow: "visible" }}>
         {phases.map(p => (
-          <path key={p.id} d={arcPath(p.start, p.end)} fill={p.color} opacity={p.id === phase.id ? 1 : 0.55} />
+          <path key={p.id} d={arcPath(p.start, p.end)}
+            fill={p.id === phase.id ? "var(--c-menstrual)" : p.color}
+            opacity={p.id === phase.id ? 1 : 0.4} />
         ))}
         {phases.map(p => {
           const a = angleFor(p.start - 1);
