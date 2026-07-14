@@ -177,12 +177,11 @@
 
   .phase-mini-strip {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
-    margin-top: 14px; border-radius: 12px; overflow: hidden;
+    margin-top: 14px;
   }
   .phase-mini-strip span {
-    height: 8px; border-radius: 4px; opacity: 0.45;
+    height: 8px; border-radius: 4px;
   }
-  .phase-mini-strip span.on { opacity: 1; }
 
   .recs-strip { margin-top: 28px; }
   .recs-strip-hd { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }

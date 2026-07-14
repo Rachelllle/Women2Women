@@ -8,6 +8,8 @@ function App() {
   const [route, setRoute]     = useState("onboarding");
   const [profile, setProfile] = useState(null);
   const [alertCount, setAlertCount] = useState(0);
+  // chat history lives here so it survives navigation between pages
+  const [chatMessages, setChatMessages] = useState([CHAT_GREETING]);
 
   // real unread-alert count for the sidebar badge
   const refreshAlertCount = () => {
@@ -76,7 +78,7 @@ function App() {
           {route === "insights" && <InsightsScreen profile={profile} day={day} onNav={setRoute} />}
           {route === "symptoms" && <LogSymptomsScreen profile={profile} day={day} />}
           {route === "history"  && <HistoryScreen  profile={profile} day={day} onNav={setRoute} />}
-          {route === "chat"     && <ChatScreen     profile={profile} day={day} />}
+          {route === "chat"     && <ChatScreen     profile={profile} day={day} messages={chatMessages} setMessages={setChatMessages} />}
           {route === "alerts"   && <AlertsScreen   profile={profile} day={day} onAlertsChange={setAlertCount} />}
           {route === "profile"  && <ProfileScreen  profile={profile} day={day} onReset={reset} onUpdateProfile={updateProfile} />}
         </div>

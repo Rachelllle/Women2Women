@@ -18,7 +18,6 @@ from recommandation.routes import rec_bp
 from prediction.routes import prediction_bp
 from history.routes import history_bp
 from chat.routes import chat_bp
-from alerts.routes import alerts_bp
 from alerting.routes import alerting_bp
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -39,7 +38,6 @@ app.register_blueprint(rec_bp)
 app.register_blueprint(prediction_bp)
 app.register_blueprint(history_bp)
 app.register_blueprint(chat_bp)
-app.register_blueprint(alerts_bp)
 app.register_blueprint(alerting_bp)
 
 init_db()
